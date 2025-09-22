@@ -78,10 +78,12 @@ export const useTestDataGenerator = () => {
                 crearTorneo: typeof crearTorneo
             });
 
+            console.log('🔐 Verificando autenticación...');
             if (!user) {
                 console.error('❌ Error: Usuario no autenticado');
                 throw new Error('Usuario no autenticado');
             }
+            console.log('✅ Usuario autenticado correctamente');
 
             // 1. Crear club
             console.log('🏢 Creando club...');
@@ -105,9 +107,13 @@ export const useTestDataGenerator = () => {
 
             // 2. Crear equipos
             console.log('👥 Creando equipos...');
+            console.log('📋 EQUIPOS_DATA disponibles:', EQUIPOS_DATA.length);
+            console.log('🔧 crearEquipo function:', typeof crearEquipo);
             const equiposIds: string[] = [];
 
+            console.log('🔄 Iniciando bucle de creación de equipos...');
             for (let i = 0; i < 6; i++) {
+                console.log(`🔄 Iteración ${i + 1}/6`);
                 const equipoData = EQUIPOS_DATA[i];
                 try {
                     console.log(`⚽ Creando equipo ${i + 1}/6: ${equipoData.nombre}`);

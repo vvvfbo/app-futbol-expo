@@ -1,8 +1,8 @@
+import { CAMPOS_MOCK, CONFIGURACION_DEFAULT } from '@/constants/categories';
+import { CampoFutbol, Clasificacion, Club, Equipo, EventoPartido, FiltroAmistosos, FiltroEquipos, FiltroTorneos, Jugador, Partido, PartidoAmistoso, Torneo } from '@/types';
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Equipo, Torneo, Partido, Jugador, Clasificacion, FiltroTorneos, FiltroEquipos, CampoFutbol, EventoPartido, Club, PartidoAmistoso, FiltroAmistosos } from '@/types';
-import { CONFIGURACION_DEFAULT, CAMPOS_MOCK } from '@/constants/categories';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface DataState {
   equipos: Equipo[];
@@ -12,20 +12,20 @@ interface DataState {
   clubes: Club[];
   amistosos: PartidoAmistoso[];
   isLoading: boolean;
-  
+
   // Equipos
   crearEquipo: (equipo: Omit<Equipo, 'id' | 'fechaCreacion'>) => Promise<string>;
   actualizarEquipo: (id: string, equipo: Partial<Equipo>) => Promise<void>;
   eliminarEquipo: (id: string) => Promise<void>;
   obtenerEquiposPorEntrenador: (entrenadorId: string) => Equipo[];
   obtenerEquiposPorFiltro: (filtro: FiltroEquipos) => Equipo[];
-  
+
   // Jugadores
   agregarJugador: (equipoId: string, jugador: Omit<Jugador, 'id' | 'equipoId' | 'fechaRegistro'>) => Promise<void>;
   actualizarJugador: (id: string, jugador: Partial<Jugador>) => Promise<void>;
   eliminarJugador: (id: string) => Promise<void>;
   obtenerJugadoresPorEquipo: (equipoId: string) => Jugador[];
-  
+
   // Torneos
   crearTorneo: (torneo: Omit<Torneo, 'id' | 'fechaCreacion'>) => Promise<string>;
   actualizarTorneo: (id: string, torneo: Partial<Torneo>) => Promise<void>;
@@ -35,7 +35,7 @@ interface DataState {
   obtenerTorneosPorFiltro: (filtro: FiltroTorneos) => Torneo[];
   inscribirEquipoEnTorneo: (torneoId: string, equipoId: string) => Promise<void>;
   desinscribirEquipoDelTorneo: (torneoId: string, equipoId: string) => Promise<void>;
-  
+
   // Partidos
   crearPartidos: (partidos: Omit<Partido, 'id'>[]) => Promise<void>;
   actualizarPartido: (id: string, partido: Partial<Partido>) => Promise<void>;
@@ -43,14 +43,14 @@ interface DataState {
   obtenerPartidosPorTorneo: (torneoId: string) => Partido[];
   obtenerPartidosPorEquipo: (equipoId: string) => Partido[];
   agregarEvento: (partidoId: string, evento: Omit<EventoPartido, 'id' | 'partidoId'>) => Promise<void>;
-  
+
   // Campos
   crearCampo: (campo: Omit<CampoFutbol, 'id'>) => Promise<string>;
   actualizarCampo: (id: string, campo: Partial<CampoFutbol>) => Promise<void>;
   eliminarCampo: (id: string) => Promise<void>;
   obtenerCamposPorCiudad: (ciudad: string) => CampoFutbol[];
   obtenerCamposPorTipo: (tipo: string) => CampoFutbol[];
-  
+
   // Clasificación y estadísticas
   obtenerClasificacion: (torneoId: string, grupo?: string) => Clasificacion[];
   obtenerClasificacionPorGrupo: (torneoId: string) => { [grupo: string]: Clasificacion[] };
@@ -59,7 +59,7 @@ interface DataState {
   editarPartido: (partidoId: string, cambios: { fecha?: string; hora?: string; equipoLocalId?: string; equipoVisitanteId?: string }) => Promise<void>;
   obtenerGoleadoresTorneo: (torneoId: string) => { jugadorId: string; equipoId: string; goles: number; nombre?: string }[];
   obtenerEstadisticasJugador: (jugadorId: string, torneoId?: string) => { goles: number; asistencias: number; tarjetasAmarillas: number; tarjetasRojas: number };
-  
+
   // Clubes
   crearClub: (club: Omit<Club, 'id' | 'fechaCreacion'>) => Promise<string>;
   actualizarClub: (id: string, club: Partial<Club>) => Promise<void>;
@@ -67,7 +67,7 @@ interface DataState {
   obtenerClubesPorEntrenador: (entrenadorId: string) => Club[];
   agregarEquipoAClub: (clubId: string, equipoId: string, categoria: string) => Promise<void>;
   removerEquipoDeClub: (clubId: string, equipoId: string) => Promise<void>;
-  
+
   // Amistosos
   crearAmistoso: (amistoso: Omit<PartidoAmistoso, 'id' | 'fechaCreacion'>) => Promise<string>;
   actualizarAmistoso: (id: string, amistoso: Partial<PartidoAmistoso>) => Promise<void>;
@@ -80,7 +80,7 @@ interface DataState {
   obtenerAmistososPorEquipo: (equipoId: string) => PartidoAmistoso[];
   obtenerDisponibilidadesPorFiltro: (filtro: FiltroAmistosos) => PartidoAmistoso[];
   exportarResultadoAmistoso: (amistosoId: string) => Promise<string>;
-  
+
   // Utilidades
   generarCalendarioTorneo: (torneoId: string) => Promise<void>;
   limpiarTodosLosDatos: () => Promise<void>;
@@ -106,36 +106,36 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       console.log(`ℹ️ No ${dataType} data found`);
       return [];
     }
-    
+
     // Check for common corruption patterns
     if (data.includes('undefined') || data.includes('NaN') || data.includes('[object Object]')) {
       console.warn(`⚠️ Corrupted ${dataType} data detected, clearing...`);
       AsyncStorage.removeItem(dataType.toLowerCase());
       return [];
     }
-    
+
     try {
       // Try to clean the data first
       let cleanData = data.trim();
-      
+
       // Remove any trailing commas or malformed JSON
       cleanData = cleanData.replace(/,\s*([}\]])/g, '$1');
-      
+
       // Check if it starts and ends correctly
       if (!cleanData.startsWith('[') || !cleanData.endsWith(']')) {
         console.warn(`⚠️ ${dataType} data doesn't have proper array format`);
         AsyncStorage.removeItem(dataType.toLowerCase());
         return [];
       }
-      
+
       const parsed = JSON.parse(cleanData);
-      
+
       if (!Array.isArray(parsed)) {
         console.warn(`⚠️ ${dataType} data is not an array:`, typeof parsed);
         AsyncStorage.removeItem(dataType.toLowerCase());
         return [];
       }
-      
+
       console.log(`✅ ${dataType} loaded:`, parsed.length);
       return parsed;
     } catch (error: any) {
@@ -148,7 +148,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
 
   const loadData = useCallback(async () => {
     let isMounted = true;
-    
+
     // Set a timeout to prevent hydration timeout
     const timeoutId = setTimeout(() => {
       if (isMounted) {
@@ -156,10 +156,10 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         setIsLoading(false);
       }
     }, 3000); // 3 second timeout for faster loading
-    
+
     try {
       console.log('📦 === STARTING DATA LOAD ===');
-      
+
       // Load all data with timeout protection
       const loadPromises = [
         AsyncStorage.getItem('equipos'),
@@ -169,18 +169,18 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         AsyncStorage.getItem('clubes'),
         AsyncStorage.getItem('amistosos')
       ];
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('AsyncStorage timeout')), 5000);
       });
-      
+
       const [equiposData, torneosData, partidosData, camposData, clubesData, amistososData] = await Promise.race([
         Promise.all(loadPromises),
         timeoutPromise
       ]) as string[];
-      
+
       if (!isMounted) return;
-      
+
       console.log('📦 Raw data loaded from AsyncStorage');
       console.log('🏆 Equipos data length:', equiposData?.length || 0);
       console.log('🏟️ Torneos data length:', torneosData?.length || 0);
@@ -188,14 +188,14 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       console.log('🏟️ Campos data length:', camposData?.length || 0);
       console.log('🏛️ Clubes data length:', clubesData?.length || 0);
       console.log('🤝 Amistosos data length:', amistososData?.length || 0);
-      
+
       // Parse all data safely
       const parsedEquipos = parseJsonSafely(equiposData, 'Equipos');
       const parsedTorneos = parseJsonSafely(torneosData, 'Torneos');
       const parsedPartidos = parseJsonSafely(partidosData, 'Partidos');
       const parsedClubes = parseJsonSafely(clubesData, 'Clubes');
       const parsedAmistosos = parseJsonSafely(amistososData, 'Amistosos');
-      
+
       // Handle campos separately (has default)
       let parsedCampos = CAMPOS_MOCK;
       if (camposData) {
@@ -204,9 +204,9 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
           parsedCampos = campos;
         }
       }
-      
+
       if (!isMounted) return;
-      
+
       // Set all state at once to avoid multiple re-renders
       setEquipos(parsedEquipos);
       setTorneos(parsedTorneos);
@@ -214,7 +214,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       setCampos(parsedCampos);
       setClubes(parsedClubes);
       setAmistosos(parsedAmistosos);
-      
+
       console.log('✅ === DATA LOAD COMPLETED ===');
       console.log('📊 Final counts:');
       console.log('  - Equipos:', parsedEquipos.length);
@@ -223,15 +223,15 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       console.log('  - Campos:', parsedCampos.length);
       console.log('  - Clubes:', parsedClubes.length);
       console.log('  - Amistosos:', parsedAmistosos.length);
-      
+
     } catch (error: any) {
       console.error('❌ === CRITICAL ERROR LOADING DATA ===');
       console.error('Error type:', typeof error);
       console.error('Error message:', error?.message || 'Unknown error');
       console.error('Error stack:', error?.stack || 'No stack trace');
-      
+
       if (!isMounted) return;
-      
+
       // Force reset all data on critical error
       console.log('🔄 Resetting all data to safe defaults...');
       setEquipos([]);
@@ -240,7 +240,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       setCampos(CAMPOS_MOCK);
       setClubes([]);
       setAmistosos([]);
-      
+
       // Clear potentially corrupted AsyncStorage
       try {
         await Promise.all([
@@ -269,7 +269,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         console.error('❌ saveEquipos: newEquipos is not an array:', typeof newEquipos);
         return;
       }
-      
+
       const jsonString = JSON.stringify(newEquipos);
       await AsyncStorage.setItem('equipos', jsonString);
       setEquipos(newEquipos);
@@ -286,7 +286,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         console.error('❌ saveTorneos: newTorneos is not an array:', typeof newTorneos);
         return;
       }
-      
+
       const jsonString = JSON.stringify(newTorneos);
       await AsyncStorage.setItem('torneos', jsonString);
       setTorneos(newTorneos);
@@ -303,7 +303,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         console.error('❌ savePartidos: newPartidos is not an array:', typeof newPartidos);
         return;
       }
-      
+
       const jsonString = JSON.stringify(newPartidos);
       await AsyncStorage.setItem('partidos', jsonString);
       setPartidos(newPartidos);
@@ -320,7 +320,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         console.error('❌ saveCampos: newCampos is not an array:', typeof newCampos);
         return;
       }
-      
+
       const jsonString = JSON.stringify(newCampos);
       await AsyncStorage.setItem('campos', jsonString);
       setCampos(newCampos);
@@ -335,20 +335,20 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     console.log('🏗️ === CREANDO EQUIPO ===');
     console.log('🏗️ Datos recibidos:', equipo);
     console.log('🏗️ Equipos actuales:', equipos.length);
-    
+
     const id = Date.now().toString();
-    const nuevoEquipo: Equipo = { 
-      ...equipo, 
+    const nuevoEquipo: Equipo = {
+      ...equipo,
       id,
       fechaCreacion: new Date().toISOString(),
       jugadores: equipo.jugadores || []
     };
-    
+
     console.log('🏗️ Nuevo equipo creado:', nuevoEquipo);
     console.log('🏗️ Llamando saveEquipos con:', [...equipos, nuevoEquipo].length, 'equipos');
-    
+
     await saveEquipos([...equipos, nuevoEquipo]);
-    
+
     console.log('🏗️ Equipo guardado correctamente, ID:', id);
     return id;
   }, [equipos, saveEquipos]);
@@ -358,15 +358,15 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     console.log('🔄 Equipo ID:', id);
     console.log('🔄 Cambios:', equipoActualizado);
     console.log('🔄 Estado actual del equipo:', equipos.find(e => e.id === id));
-    
-    const nuevosEquipos = equipos.map(e => 
+
+    const nuevosEquipos = equipos.map(e =>
       e.id === id ? { ...e, ...equipoActualizado } : e
     );
-    
+
     console.log('🔄 Nuevo estado del equipo:', nuevosEquipos.find(e => e.id === id));
-    
+
     await saveEquipos(nuevosEquipos);
-    
+
     console.log('✅ Equipo actualizado exitosamente');
     console.log('🔄 === ACTUALIZACIÓN COMPLETADA ===');
   }, [equipos, saveEquipos]);
@@ -401,14 +401,14 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       equipoId,
       fechaRegistro: new Date().toISOString()
     };
-    
+
     const nuevosEquipos = equipos.map(e => {
       if (e.id === equipoId) {
         return { ...e, jugadores: [...(e.jugadores || []), nuevoJugador] };
       }
       return e;
     });
-    
+
     await saveEquipos(nuevosEquipos);
   }, [equipos, saveEquipos]);
 
@@ -437,8 +437,8 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
 
   const crearTorneo = useCallback(async (torneo: Omit<Torneo, 'id' | 'fechaCreacion'>): Promise<string> => {
     const id = Date.now().toString();
-    const nuevoTorneo: Torneo = { 
-      ...torneo, 
+    const nuevoTorneo: Torneo = {
+      ...torneo,
       id,
       fechaCreacion: new Date().toISOString(),
       equiposIds: torneo.equiposIds || [],
@@ -449,7 +449,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   }, [torneos, saveTorneos]);
 
   const actualizarTorneo = useCallback(async (id: string, torneoActualizado: Partial<Torneo>) => {
-    const nuevosTorneos = torneos.map(t => 
+    const nuevosTorneos = torneos.map(t =>
       t.id === id ? { ...t, ...torneoActualizado } : t
     );
     await saveTorneos(nuevosTorneos);
@@ -464,14 +464,14 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     const torneo = torneos.find(t => t.id === id);
     if (!torneo) return;
 
-    const nuevosTorneos = torneos.map(t => 
-      t.id === id 
-        ? { 
-            ...t, 
-            estado: 'Finalizado' as const,
-            fechaFin: resultado.fechaFinalizacion,
-            resultadoFinal: resultado
-          } 
+    const nuevosTorneos = torneos.map(t =>
+      t.id === id
+        ? {
+          ...t,
+          estado: 'Finalizado' as const,
+          fechaFin: resultado.fechaFinalizacion,
+          resultadoFinal: resultado
+        }
         : t
     );
     await saveTorneos(nuevosTorneos);
@@ -479,7 +479,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     // Enviar notificación de torneo finalizado
     const equipoCampeon = resultado.campeon ? equipos.find(e => e.id === resultado.campeon) : undefined;
     const equipoSubcampeon = resultado.subcampeon ? equipos.find(e => e.id === resultado.subcampeon) : undefined;
-    
+
     console.log(`Torneo finalizado: ${torneo.nombre}`);
     if (equipoCampeon) {
       console.log(`Campeón: ${equipoCampeon.nombre}`);
@@ -510,7 +510,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   const inscribirEquipoEnTorneo = useCallback(async (torneoId: string, equipoId: string) => {
     const torneo = torneos.find(t => t.id === torneoId);
     if (!torneo || torneo.equiposIds.includes(equipoId)) return;
-    
+
     if (torneo.equiposIds.length >= torneo.maxEquipos) {
       throw new Error('El torneo ya está completo');
     }
@@ -536,7 +536,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   }, [partidos, savePartidos]);
 
   const actualizarPartido = useCallback(async (id: string, partidoActualizado: Partial<Partido>) => {
-    const nuevosPartidos = partidos.map(p => 
+    const nuevosPartidos = partidos.map(p =>
       p.id === id ? { ...p, ...partidoActualizado } : p
     );
     await savePartidos(nuevosPartidos);
@@ -550,20 +550,20 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     if (!torneo) return;
 
     // Buscar el siguiente partido en la fase siguiente
-    const siguienteFase = partido.fase === 'octavos' ? 'cuartos' : 
-                         partido.fase === 'cuartos' ? 'semifinal' : 
-                         partido.fase === 'semifinal' ? 'final' : null;
+    const siguienteFase = partido.fase === 'octavos' ? 'cuartos' :
+      partido.fase === 'cuartos' ? 'semifinal' :
+        partido.fase === 'semifinal' ? 'final' : null;
 
     if (siguienteFase) {
-      const partidosSiguienteFase = partidos.filter(p => 
+      const partidosSiguienteFase = partidos.filter(p =>
         p.torneoId === partido.torneoId && p.fase === siguienteFase
       ).sort((a, b) => a.jornada - b.jornada);
 
       // Encontrar el partido correspondiente basado en la posición del partido actual
-      const partidosActualFase = partidos.filter(p => 
+      const partidosActualFase = partidos.filter(p =>
         p.torneoId === partido.torneoId && p.fase === partido.fase
       ).sort((a, b) => a.jornada - b.jornada);
-      
+
       const posicionPartidoActual = partidosActualFase.findIndex(p => p.id === partidoId);
       const siguientePartidoIndex = Math.floor(posicionPartidoActual / 2);
       const siguientePartido = partidosSiguienteFase[siguientePartidoIndex];
@@ -584,34 +584,34 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
 
     const torneo = torneos.find(t => t.id === partido.torneoId);
     const estadoAnterior = partido.estado;
-    
-    const nuevosPartidos = partidos.map(p => 
-      p.id === partidoId 
+
+    const nuevosPartidos = partidos.map(p =>
+      p.id === partidoId
         ? { ...p, golesLocal, golesVisitante, estado: 'Jugado' as const, goleadores: goleadores || [] }
         : p
     );
     await savePartidos(nuevosPartidos);
-    
+
     // Si es un partido de eliminatorias, avanzar al ganador
     if (partido.fase && (torneo?.tipo === 'eliminatorias' || torneo?.tipo === 'grupos-eliminatorias')) {
-      const equipoGanadorId = golesLocal > golesVisitante ? partido.equipoLocalId : 
-                             golesVisitante > golesLocal ? partido.equipoVisitanteId : 
-                             partido.equipoLocalId; // En caso de empate, avanza el local (se puede cambiar esta lógica)
-      
+      const equipoGanadorId = golesLocal > golesVisitante ? partido.equipoLocalId :
+        golesVisitante > golesLocal ? partido.equipoVisitanteId :
+          partido.equipoLocalId; // En caso de empate, avanza el local (se puede cambiar esta lógica)
+
       await avanzarEnEliminatorias(partidoId, equipoGanadorId);
     }
-    
+
     // Enviar notificación solo si el partido cambió de estado a "Jugado" y el torneo no está finalizado
     if (estadoAnterior !== 'Jugado' && torneo && torneo.estado !== 'Finalizado') {
       const equipoLocal = equipos.find(e => e.id === partido.equipoLocalId);
       const equipoVisitante = equipos.find(e => e.id === partido.equipoVisitanteId);
-      
+
       if (equipoLocal && equipoVisitante) {
         // Aquí se enviaría la notificación usando el hook de notificaciones
         console.log(`Notificación: ${equipoLocal.nombre} ${golesLocal} - ${golesVisitante} ${equipoVisitante.nombre}`);
       }
     }
-    
+
     // Actualizar estadísticas de jugadores automáticamente
     if (goleadores && goleadores.length > 0) {
       const nuevosEquipos = equipos.map(equipo => {
@@ -656,7 +656,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     if (!torneo) return [];
 
     const clasificacion: Map<string, Clasificacion> = new Map();
-    
+
     // Determinar equipos a incluir
     let equiposIds: string[] = [];
     if (grupo && torneo.grupos && torneo.grupos[grupo]) {
@@ -664,7 +664,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     } else {
       equiposIds = torneo.equiposIds;
     }
-    
+
     // Inicializar clasificación para cada equipo
     equiposIds.forEach((equipoId, index) => {
       clasificacion.set(equipoId, {
@@ -688,16 +688,16 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       if (partido.estado === 'Jugado' && partido.golesLocal !== undefined && partido.golesVisitante !== undefined) {
         const local = clasificacion.get(partido.equipoLocalId);
         const visitante = clasificacion.get(partido.equipoVisitanteId);
-        
+
         if (local && visitante) {
           local.partidosJugados++;
           visitante.partidosJugados++;
-          
+
           local.golesFavor += partido.golesLocal;
           local.golesContra += partido.golesVisitante;
           visitante.golesFavor += partido.golesVisitante;
           visitante.golesContra += partido.golesLocal;
-          
+
           if (partido.golesLocal > partido.golesVisitante) {
             local.partidosGanados++;
             local.puntos += torneo.configuracion.puntosVictoria;
@@ -714,7 +714,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
             local.puntos += torneo.configuracion.puntosEmpate;
             visitante.puntos += torneo.configuracion.puntosEmpate;
           }
-          
+
           local.diferenciaGoles = local.golesFavor - local.golesContra;
           visitante.diferenciaGoles = visitante.golesFavor - visitante.golesContra;
         }
@@ -740,7 +740,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     if (!torneo || !torneo.grupos) return {};
 
     const clasificacionPorGrupo: { [grupo: string]: Clasificacion[] } = {};
-    
+
     Object.keys(torneo.grupos).forEach(grupoId => {
       clasificacionPorGrupo[grupoId] = obtenerClasificacion(torneoId, grupoId);
     });
@@ -776,15 +776,15 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     let ronda = 1;
 
     while (equiposRestantes.length > 1) {
-      const faseName = equiposRestantes.length <= 2 ? 'final' : 
-                      equiposRestantes.length <= 4 ? 'semifinal' : 
-                      equiposRestantes.length <= 8 ? 'cuartos' : 'octavos';
-      
+      const faseName = equiposRestantes.length <= 2 ? 'final' :
+        equiposRestantes.length <= 4 ? 'semifinal' :
+          equiposRestantes.length <= 8 ? 'cuartos' : 'octavos';
+
       for (let i = 0; i < equiposRestantes.length; i += 2) {
         if (i + 1 < equiposRestantes.length) {
           const fecha = new Date(torneo.fechaInicio);
           fecha.setDate(fecha.getDate() + 30 + (ronda - 1) * 7); // Empezar eliminatorias 30 días después
-          
+
           nuevosPartidos.push({
             torneoId,
             equipoLocalId: equiposRestantes[i],
@@ -798,7 +798,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
           });
         }
       }
-      
+
       equiposRestantes = equiposRestantes.filter((_, index) => index % 2 === 0);
       ronda++;
     }
@@ -838,19 +838,19 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     } else if (torneo.tipo === 'eliminatorias') {
       // Generar partidos de eliminatorias
       let equiposRestantes = [...equipos];
-      
+
       // Mezclar equipos aleatoriamente
       for (let i = equiposRestantes.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [equiposRestantes[i], equiposRestantes[j]] = [equiposRestantes[j], equiposRestantes[i]];
       }
-      
+
       let ronda = 1;
       let fechaBase = new Date(torneo.fechaInicio);
-      
+
       while (equiposRestantes.length > 1) {
         const partidosRonda: Omit<Partido, 'id'>[] = [];
-        
+
         // Determinar nombre de la fase según el número de equipos
         let faseName: string;
         if (equiposRestantes.length <= 2) {
@@ -862,12 +862,12 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         } else {
           faseName = 'octavos';
         }
-        
+
         for (let i = 0; i < equiposRestantes.length; i += 2) {
           if (i + 1 < equiposRestantes.length) {
             const fechaPartido = new Date(fechaBase);
             fechaPartido.setDate(fechaPartido.getDate() + (ronda - 1) * 7); // Una semana entre rondas
-            
+
             partidosRonda.push({
               torneoId,
               equipoLocalId: equiposRestantes[i],
@@ -881,9 +881,9 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
             });
           }
         }
-        
+
         nuevosPartidos.push(...partidosRonda);
-        
+
         // Para la siguiente ronda, solo mantener la mitad de los equipos
         // En eliminatorias reales, esto se actualizará cuando se jueguen los partidos
         const nuevosEquiposRestantes: string[] = [];
@@ -894,7 +894,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
             nuevosEquiposRestantes.push(equiposRestantes[i]);
           }
         }
-        
+
         equiposRestantes = nuevosEquiposRestantes;
         ronda++;
       }
@@ -919,7 +919,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   }, [campos, saveCampos]);
 
   const actualizarCampo = useCallback(async (id: string, campoActualizado: Partial<CampoFutbol>) => {
-    const nuevosCampos = campos.map(c => 
+    const nuevosCampos = campos.map(c =>
       c.id === id ? { ...c, ...campoActualizado } : c
     );
     await saveCampos(nuevosCampos);
@@ -1011,7 +1011,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         console.error('❌ saveClubes: newClubes is not an array:', typeof newClubes);
         return;
       }
-      
+
       const jsonString = JSON.stringify(newClubes);
       await AsyncStorage.setItem('clubes', jsonString);
       setClubes(newClubes);
@@ -1028,7 +1028,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         console.error('❌ saveAmistosos: newAmistosos is not an array:', typeof newAmistosos);
         return;
       }
-      
+
       const jsonString = JSON.stringify(newAmistosos);
       await AsyncStorage.setItem('amistosos', jsonString);
       setAmistosos(newAmistosos);
@@ -1042,8 +1042,8 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   // Funciones para clubes
   const crearClub = useCallback(async (club: Omit<Club, 'id' | 'fechaCreacion'>): Promise<string> => {
     const id = Date.now().toString();
-    const nuevoClub: Club = { 
-      ...club, 
+    const nuevoClub: Club = {
+      ...club,
       id,
       fechaCreacion: new Date().toISOString(),
       categorias: club.categorias || {}
@@ -1053,7 +1053,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   }, [clubes, saveClubes]);
 
   const actualizarClub = useCallback(async (id: string, clubActualizado: Partial<Club>) => {
-    const nuevosClubes = clubes.map(c => 
+    const nuevosClubes = clubes.map(c =>
       c.id === id ? { ...c, ...clubActualizado } : c
     );
     await saveClubes(nuevosClubes);
@@ -1073,14 +1073,14 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     console.log('🏛️ Club ID:', clubId);
     console.log('🏛️ Equipo ID:', equipoId);
     console.log('🏛️ Categoría:', categoria);
-    
+
     // Validar parámetros
     if (!clubId || !equipoId || !categoria) {
       const error = 'Parámetros inválidos: clubId, equipoId y categoria son requeridos';
       console.error('❌', error);
       throw new Error(error);
     }
-    
+
     const club = clubes.find(c => c.id === clubId);
     if (!club) {
       console.error('❌ Club no encontrado:', clubId);
@@ -1107,10 +1107,10 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
 
     // Actualizar el equipo con clubId PRIMERO
     console.log('🔗 Vinculando equipo al club...');
-    const nuevosEquipos = equipos.map(e => 
+    const nuevosEquipos = equipos.map(e =>
       e.id === equipoId ? { ...e, clubId } : e
     );
-    
+
     // Actualizar las categorías del club
     const nuevasCategorias = { ...club.categorias };
     if (!nuevasCategorias[categoria]) {
@@ -1120,7 +1120,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         equipos: []
       };
     }
-    
+
     if (!nuevasCategorias[categoria].equipos.includes(equipoId)) {
       console.log('➕ Agregando equipo a la categoría');
       nuevasCategorias[categoria].equipos.push(equipoId);
@@ -1139,25 +1139,25 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     console.log('💾 Actualizando club con nuevas categorías y estadísticas...');
     console.log('📊 Total equipos calculado:', totalEquipos);
     console.log('📊 Equipos en categorías:', Object.entries(nuevasCategorias).map(([cat, data]) => ({ categoria: cat, equipos: data.equipos.length })));
-    
-    const nuevosClubes = clubes.map(c => 
-      c.id === clubId ? { 
-        ...c, 
+
+    const nuevosClubes = clubes.map(c =>
+      c.id === clubId ? {
+        ...c,
         categorias: nuevasCategorias,
         estadisticas: nuevasEstadisticas
       } : c
     );
-    
+
     try {
       // Guardar ambos cambios de forma secuencial para evitar problemas de concurrencia
       console.log('💾 Guardando equipos...');
       await saveEquipos(nuevosEquipos);
       console.log('✅ Equipos guardados exitosamente');
-      
+
       console.log('💾 Guardando clubes...');
       await saveClubes(nuevosClubes);
       console.log('✅ Clubes guardados exitosamente');
-      
+
       // Verificar el estado final después de guardar
       const equipoFinal = nuevosEquipos.find(e => e.id === equipoId);
       const clubFinal = nuevosClubes.find(c => c.id === clubId);
@@ -1165,11 +1165,11 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       console.log('🔍 Estado final del club:', { id: clubFinal?.id, nombre: clubFinal?.nombre, totalEquipos: clubFinal?.estadisticas?.totalEquipos });
       console.log('🔍 Categorías del club:', Object.keys(clubFinal?.categorias || {}));
       console.log('🔍 Equipos en categoría ' + categoria + ':', clubFinal?.categorias?.[categoria]?.equipos || []);
-      
+
       // Verificar que el equipo realmente tenga el clubId usando el estado actualizado
       const equipoVerificacion = nuevosEquipos.find(e => e.id === equipoId);
       console.log('🔍 Verificación final - equipo en estado actualizado:', { id: equipoVerificacion?.id, clubId: equipoVerificacion?.clubId });
-      
+
       console.log('🏛️ === PROCESO COMPLETADO EXITOSAMENTE ===');
     } catch (error) {
       console.error('❌ Error guardando datos:', error);
@@ -1187,7 +1187,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     });
 
     await actualizarClub(clubId, { categorias: nuevasCategorias });
-    
+
     // Remover la referencia del club del equipo
     await actualizarEquipo(equipoId, { clubId: undefined });
   }, [clubes, actualizarClub, actualizarEquipo]);
@@ -1198,24 +1198,24 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       console.log('🤝 === CREANDO AMISTOSO EN DATA-CONTEXT ===');
       console.log('🤝 Datos recibidos:', JSON.stringify(amistoso, null, 2));
       console.log('🤝 Estado actual de amistosos:', amistosos.length);
-      
+
       const id = Date.now().toString();
-      const nuevoAmistoso: PartidoAmistoso = { 
-        ...amistoso, 
+      const nuevoAmistoso: PartidoAmistoso = {
+        ...amistoso,
         id,
         fechaCreacion: new Date().toISOString()
       };
-      
+
       console.log('🤝 Nuevo amistoso creado:', JSON.stringify(nuevoAmistoso, null, 2));
-      
+
       const nuevosAmistosos = [...amistosos, nuevoAmistoso];
       console.log('🤝 Total amistosos después de agregar:', nuevosAmistosos.length);
-      
+
       await saveAmistosos(nuevosAmistosos);
-      
+
       console.log('✅ Amistoso guardado exitosamente con ID:', id);
       console.log('🤝 === PROCESO COMPLETADO ===');
-      
+
       return id;
     } catch (error) {
       console.error('❌ Error en crearAmistoso:', error);
@@ -1224,7 +1224,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   }, [amistosos, saveAmistosos]);
 
   const actualizarAmistoso = useCallback(async (id: string, amistosoActualizado: Partial<PartidoAmistoso>) => {
-    const nuevosAmistosos = amistosos.map(a => 
+    const nuevosAmistosos = amistosos.map(a =>
       a.id === id ? { ...a, ...amistosoActualizado } : a
     );
     await saveAmistosos(nuevosAmistosos);
@@ -1241,7 +1241,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       if (filtro.tipoFutbol && amistoso.tipoFutbol !== filtro.tipoFutbol) return false;
       if (filtro.fecha && amistoso.fecha !== filtro.fecha) return false;
       if (filtro.franjaHoraria && amistoso.franjaHoraria !== filtro.franjaHoraria) return false;
-      
+
       // Filtro por proximidad (si se proporciona ubicación y rango)
       if (filtro.ubicacion && filtro.rangoKm && amistoso.ubicacion.coordenadas) {
         const distancia = calcularDistancia(
@@ -1252,7 +1252,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         );
         if (distancia > filtro.rangoKm) return false;
       }
-      
+
       return true;
     });
   }, [amistosos]);
@@ -1298,13 +1298,13 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       goleadores: goleadores || [],
       fechaFinalizacion: new Date().toISOString()
     });
-    
+
     // Actualizar estadísticas de equipos
     const amistoso = amistosos.find(a => a.id === amistosoId);
     if (amistoso && amistoso.equipoVisitanteId) {
       const equipoLocal = equipos.find(e => e.id === amistoso.equipoLocalId);
       const equipoVisitante = equipos.find(e => e.id === amistoso.equipoVisitanteId);
-      
+
       if (equipoLocal && equipoVisitante) {
         // Actualizar estadísticas del equipo local
         const nuevasEstadisticasLocal = {
@@ -1319,7 +1319,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
           amistososJugados: (equipoLocal.estadisticas?.amistososJugados || 0) + 1,
           amistososGanados: (equipoLocal.estadisticas?.amistososGanados || 0) + (golesLocal > golesVisitante ? 1 : 0)
         };
-        
+
         // Actualizar estadísticas del equipo visitante
         const nuevasEstadisticasVisitante = {
           partidosJugados: equipoVisitante.estadisticas?.partidosJugados || 0,
@@ -1333,12 +1333,12 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
           amistososJugados: (equipoVisitante.estadisticas?.amistososJugados || 0) + 1,
           amistososGanados: (equipoVisitante.estadisticas?.amistososGanados || 0) + (golesVisitante > golesLocal ? 1 : 0)
         };
-        
+
         await actualizarEquipo(amistoso.equipoLocalId, { estadisticas: nuevasEstadisticasLocal });
         await actualizarEquipo(amistoso.equipoVisitanteId, { estadisticas: nuevasEstadisticasVisitante });
       }
     }
-    
+
     console.log('Amistoso finalizado');
   }, [amistosos, equipos, actualizarAmistoso, actualizarEquipo]);
 
@@ -1361,7 +1361,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
 
     const equipoLocal = equipos.find(e => e.id === amistoso.equipoLocalId);
     const equipoVisitante = equipos.find(e => e.id === amistoso.equipoVisitanteId);
-    
+
     if (!equipoLocal || !equipoVisitante) {
       throw new Error('Equipos no encontrados');
     }
@@ -1393,18 +1393,18 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
     const R = 6371; // Radio de la Tierra en km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
   const limpiarTodosLosDatos = useCallback(async () => {
     try {
       console.log('🧹 Iniciando limpieza de todos los datos...');
-      
+
       // Clear AsyncStorage
       await Promise.all([
         AsyncStorage.removeItem('equipos'),
@@ -1414,9 +1414,9 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
         AsyncStorage.removeItem('clubes'),
         AsyncStorage.removeItem('amistosos')
       ]);
-      
+
       console.log('✅ AsyncStorage limpiado');
-      
+
       // Reset state
       setEquipos([]);
       setTorneos([]);
@@ -1424,18 +1424,18 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
       setCampos(CAMPOS_MOCK);
       setClubes([]);
       setAmistosos([]);
-      
+
       console.log('✅ Estados reseteados');
       console.log('🎉 Todos los datos han sido eliminados exitosamente');
-      
+
       // Force a reload of data to ensure clean state
       setTimeout(() => {
         loadData();
       }, 100);
-      
+
     } catch (error) {
       console.error('❌ Error al limpiar los datos:', error);
-      
+
       // Force reset even if there's an error
       setEquipos([]);
       setTorneos([]);
@@ -1443,7 +1443,7 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
       setCampos(CAMPOS_MOCK);
       setClubes([]);
       setAmistosos([]);
-      
+
       throw error;
     }
   }, [loadData]);

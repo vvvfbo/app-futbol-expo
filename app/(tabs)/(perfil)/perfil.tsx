@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/auth-context';
 import { useChat } from '@/hooks/chat-context';
 import { useData } from '@/hooks/data-context';
 import { useTestDataGenerator } from '@/hooks/use-test-data-generator';
+import { useComprehensiveTester } from '@/hooks/use-comprehensive-tester';
 import { router } from 'expo-router';
 import { Bell, Database, LogOut, MessageCircle, Settings, Trophy, User, Users } from 'lucide-react-native';
 import { useState } from 'react';
@@ -15,6 +16,7 @@ export default function PerfilScreen() {
   const { equipos, torneos } = useData();
   const { getTotalUnreadCount } = useChat();
   const { generarDatosPrueba, limpiarDatosPrueba, pruebaSimple, verificarDatos } = useTestDataGenerator();
+  const { runComprehensiveTest } = useComprehensiveTester();
   const [loading, setLoading] = useState(false);
 
   const misEquipos = user?.rol === 'entrenador' ? equipos.filter(e => e.entrenadorId === user?.id) : [];
@@ -65,38 +67,47 @@ export default function PerfilScreen() {
         { text: 'Cancelar', style: 'cancel' },
         {
           text: '🎯 ¡CREAR!',
-          onPress: async () => {
-            console.log('🚀 Iniciando proceso de generación...');
-            console.log('🔧 Tipo de generarDatosPrueba:', typeof generarDatosPrueba);
-            console.log('🔧 Función existe:', !!generarDatosPrueba);
-            
-            try {
-              console.log('⏳ Llamando setLoading(true)...');
-              setLoading(true);
-              
-              console.log('📞 Llamando generarDatosPrueba()...');
-              const result = await generarDatosPrueba();
-              console.log('📊 Resultado del generador:', result);
+          onPress: () => {
+            console.log('� CLICK DETECTADO EN EL BOTÓN');
+            console.log('🔍 Testing functions availability...');
+            console.log('generarDatosPrueba:', typeof generarDatosPrueba, !!generarDatosPrueba);
+            console.log('setLoading:', typeof setLoading, !!setLoading);
+            console.log('user:', typeof user, !!user);
 
-              if (result.success) {
-                Alert.alert(
-                  '🎉 ¡Éxito Total!',
-                  `¡Datos creados correctamente!\n\n✅ Club: Club Deportivo Prueba\n⚽ Equipos: ${result.data?.equiposIds?.length || 6}\n🏆 Torneo: Copa de Prueba 2024\n📅 Partidos: ${result.data?.partidosCreados || 15}\n\n¡Ve a explorar tus nuevos datos!`
-                );
-              } else {
-                Alert.alert('❌ Error', `No se pudieron generar los datos:\n\n${result.error || 'Error desconocido'}\n\n¿Intentar de nuevo?`);
+            // Función async separada para mejor manejo de errores
+            const executeGenerator = async () => {
+              try {
+                console.log('🚀 Iniciando proceso de generación...');
+                console.log('⏳ Llamando setLoading(true)...');
+                setLoading(true);
+
+                console.log('📞 Llamando generarDatosPrueba()...');
+                const result = await generarDatosPrueba();
+                console.log('📊 Resultado del generador:', result);
+
+                if (result.success) {
+                  Alert.alert(
+                    '🎉 ¡Éxito Total!',
+                    `¡Datos creados correctamente!\n\n✅ Club: Club Deportivo Prueba\n⚽ Equipos: ${result.data?.equiposIds?.length || 6}\n🏆 Torneo: Copa de Prueba 2024\n📅 Partidos: ${result.data?.partidosCreados || 15}\n\n¡Ve a explorar tus nuevos datos!`
+                  );
+                } else {
+                  Alert.alert('❌ Error', `No se pudieron generar los datos:\n\n${result.error || 'Error desconocido'}\n\n¿Intentar de nuevo?`);
+                }
+              } catch (error) {
+                console.error('💥 Error capturado:', error);
+                console.error('💥 Error tipo:', typeof error);
+                console.error('💥 Error nombre:', error instanceof Error ? error.name : 'No es Error');
+                console.error('💥 Error mensaje:', error instanceof Error ? error.message : 'Sin mensaje');
+                console.error('💥 Error stack:', error instanceof Error ? error.stack : 'Sin stack');
+                Alert.alert('💥 Error Inesperado', `Algo salió mal:\n\n${error instanceof Error ? error.message : 'Error desconocido'}\n\n¿Intentar de nuevo?`);
+              } finally {
+                setLoading(false);
+                console.log('✅ Proceso completado, loading = false');
               }
-            } catch (error) {
-              console.error('💥 Error capturado:', error);
-              console.error('💥 Error tipo:', typeof error);
-              console.error('💥 Error nombre:', error instanceof Error ? error.name : 'No es Error');
-              console.error('💥 Error mensaje:', error instanceof Error ? error.message : 'Sin mensaje');
-              console.error('💥 Error stack:', error instanceof Error ? error.stack : 'Sin stack');
-              Alert.alert('💥 Error Inesperado', `Algo salió mal:\n\n${error instanceof Error ? error.message : 'Error desconocido'}\n\n¿Intentar de nuevo?`);
-            } finally {
-              setLoading(false);
-              console.log('✅ Proceso completado, loading = false');
-            }
+            };
+
+            // Ejecutar la función
+            executeGenerator();
           }
         }
       ]
@@ -292,6 +303,46 @@ export default function PerfilScreen() {
             <Database size={20} color="white" />
             <Text style={[styles.actionButtonText, { color: 'white' }]}>
               🔍 VERIFICAR DATOS GUARDADOS
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Botón de test comprehensivo */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#9C27B0' }]}
+            onPress={async () => {
+              console.log('🔬 INICIANDO TEST COMPREHENSIVO COMPLETO');
+              
+              try {
+                setLoading(true);
+                const results = await runComprehensiveTest();
+                
+                const totalTests = Object.keys(results).length;
+                const passedTests = Object.values(results).filter(Boolean).length;
+                const percentage = Math.round((passedTests / totalTests) * 100);
+                
+                Alert.alert(
+                  '🔬 Test Comprehensivo Completado',
+                  `📊 Resultados: ${passedTests}/${totalTests} tests pasados (${percentage}%)\n\n` +
+                  `${percentage === 100 ? '🎉 ¡TODOS LOS TESTS PASARON!' : 
+                    percentage >= 75 ? '⚠️ La mayoría pasaron, revisar fallos' : 
+                    '💥 Múltiples fallos detectados'}\n\n` +
+                  '🔍 Revisa la consola para detalles completos de cada test.',
+                  [{ text: 'OK', style: 'default' }]
+                );
+              } catch (error) {
+                console.error('💥 Error en test comprehensivo:', error);
+                Alert.alert('💥 Error', 'Error inesperado ejecutando el test comprehensivo');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <Database size={20} color="white" />
+            <Text style={[styles.actionButtonText, { color: 'white' }]}>
+              {loading ? 'Ejecutando Tests...' : '🔬 TEST COMPREHENSIVO COMPLETO'}
             </Text>
           </TouchableOpacity>
         </View>
