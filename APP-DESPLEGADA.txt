@@ -1,0 +1,61 @@
+🎉 ¡FELICIDADES! TU APP YA ESTÁ LIVE
+
+========================================
+   📱 CÓMO ENCONTRAR LA URL DE TU APP
+========================================
+
+Según el mensaje que viste, tu app está desplegada como:
+"brilliant-fenglisu-a79daa"
+
+🌐 TU URL DEBERÍA SER:
+https://brilliant-fenglisu-a79daa.netlify.app
+
+📋 CÓMO CONFIRMAR LA URL:
+========================================
+
+1️⃣ DESDE NETLIFY DASHBOARD:
+   - Ve a tu dashboard de Netlify
+   - Busca el sitio "brilliant-fenglisu-a79daa"
+   - La URL aparece en la parte superior
+   - También puedes personalizarla
+
+2️⃣ DESDE EL BOTÓN "Open production deploy":
+   - Haz clic en "Open production deploy"
+   - Te llevará directamente a tu app
+   - Copia esa URL del navegador
+
+📱 INSTALAR EN iPHONE:
+========================================
+
+1️⃣ Abre Safari en tu iPhone
+2️⃣ Ve a: https://brilliant-fenglisu-a79daa.netlify.app
+3️⃣ Espera a que cargue completamente
+4️⃣ Toca el botón "Compartir" (📤)
+5️⃣ Selecciona "Añadir a pantalla de inicio"
+6️⃣ Confirma el nombre "App Fútbol"
+7️⃣ ¡Tu app aparecerá como icono nativo!
+
+✨ FUNCIONES QUE TENDRÁS:
+========================================
+⚽ Cronómetro contextual automático
+🏆 Gestión completa de torneos
+👥 Administración de equipos
+🤝 Partidos amistosos
+📊 Seguimiento en tiempo real
+🎨 Tema oscuro/claro
+📱 Funciona SIN PC encendido
+
+🔄 ACTUALIZACIONES FUTURAS:
+========================================
+- Cada vez que hagas git push
+- Tu app se actualiza automáticamente
+- Los usuarios verán los cambios al recargar
+
+🎯 PERSONALIZAR URL (OPCIONAL):
+========================================
+1. En Netlify dashboard
+2. Site settings → Change site name
+3. Elige algo como: "app-futbol-torneos"
+4. Nueva URL: https://app-futbol-torneos.netlify.app
+
+¡DISFRUTA TU APP DE FÚTBOL! ⚽🏆
