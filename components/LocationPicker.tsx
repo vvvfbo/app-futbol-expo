@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
+  Alert,
+  Linking,
+  Modal,
   Platform,
   SafeAreaView,
-  Linking,
-  Alert
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
-import { MapPin, Search, X, Check, Navigation, Map, Target } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { Check, Map, MapPin, Navigation, Search, Target, X } from 'lucide-react-native';
 
 interface LocationPickerProps {
   onClose: () => void;
@@ -49,13 +50,13 @@ export default function LocationPicker({
   const handleCoordinateInput = (lat: string, lng: string) => {
     if (!lat.trim() || !lng.trim()) return;
     if (lat.length > 20 || lng.length > 20) return;
-    
+
     const sanitizedLat = lat.trim();
     const sanitizedLng = lng.trim();
-    
+
     const latitude = parseFloat(sanitizedLat);
     const longitude = parseFloat(sanitizedLng);
-    
+
     if (!isNaN(latitude) && !isNaN(longitude)) {
       setSelectedLocation({ latitude, longitude });
       const simpleAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
@@ -68,9 +69,9 @@ export default function LocationPicker({
       Alert.alert('Error', 'Por favor introduce una ciudad para buscar');
       return;
     }
-    
+
     console.log('🔍 Búsqueda de ubicación:', searchText);
-    
+
     try {
       // Simulamos búsqueda con ubicaciones conocidas de España
       const ubicacionesConocidas = {
@@ -95,17 +96,17 @@ export default function LocationPicker({
         'vitoria': { lat: 42.8467, lng: -2.6716, name: 'Vitoria-Gasteiz, España' },
         'oviedo': { lat: 43.3614, lng: -5.8593, name: 'Oviedo, España' }
       };
-      
+
       const searchLower = searchText.toLowerCase().trim();
       const ubicacion = ubicacionesConocidas[searchLower as keyof typeof ubicacionesConocidas];
-      
+
       if (ubicacion) {
         setSelectedLocation({ latitude: ubicacion.lat, longitude: ubicacion.lng });
         setAddress(`${ubicacion.name}`);
         setLatInput(ubicacion.lat.toString());
         setLngInput(ubicacion.lng.toString());
         console.log(`✅ Ubicación encontrada: ${ubicacion.name}`);
-        
+
         // Auto-confirmar la ubicación encontrada
         const locationData = {
           address: ubicacion.name,
@@ -114,9 +115,9 @@ export default function LocationPicker({
             longitude: ubicacion.lng
           }
         };
-        
+
         Alert.alert(
-          'Ubicación encontrada', 
+          'Ubicación encontrada',
           `Se ha seleccionado: ${ubicacion.name}. ¿Deseas usar esta ubicación?`,
           [
             { text: 'Cancelar', style: 'cancel' },
@@ -131,7 +132,7 @@ export default function LocationPicker({
         );
       } else {
         Alert.alert(
-          'Ubicación no encontrada', 
+          'Ubicación no encontrada',
           'Prueba con ciudades españolas como: Madrid, Barcelona, Valencia, Sevilla, Bilbao, Málaga, Zaragoza, Santander, Pamplona, etc.'
         );
       }
@@ -156,11 +157,11 @@ export default function LocationPicker({
         }
       };
       console.log('📍 Confirmando ubicación:', locationData);
-      
+
       // Llamar directamente a onLocationSelect sin mostrar alert
       onLocationSelect(locationData);
       console.log('✅ Ubicación enviada al componente padre');
-      
+
       // Cerrar el modal
       onClose();
     } catch (error) {
@@ -171,7 +172,7 @@ export default function LocationPicker({
 
   const getCurrentLocation = async () => {
     console.log('Obteniendo ubicación actual...');
-    
+
     try {
       if (Platform.OS === 'web') {
         if (navigator.geolocation) {
@@ -183,7 +184,7 @@ export default function LocationPicker({
                 maximumAge: 60000
               });
             });
-            
+
             console.log('Ubicación obtenida:', position.coords);
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
@@ -243,7 +244,7 @@ export default function LocationPicker({
       if (latInput && lngInput) {
         const lat = parseFloat(latInput);
         const lng = parseFloat(lngInput);
-        
+
         if (!isNaN(lat) && !isNaN(lng)) {
           setSelectedLocation({ latitude: lat, longitude: lng });
           setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
@@ -260,17 +261,24 @@ export default function LocationPicker({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Modal
+      visible={true}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      transparent={false}
+      onRequestClose={onClose}
+    >
+      <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>Seleccionar Ubicación</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.confirmButton,
               !selectedLocation && styles.confirmButtonDisabled
-            ]} 
+            ]}
             onPress={handleConfirm}
             disabled={!selectedLocation}
           >
@@ -290,7 +298,7 @@ export default function LocationPicker({
               onSubmitEditing={searchLocation}
             />
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.locationButton}
             onPress={getCurrentLocation}
           >
@@ -310,7 +318,7 @@ export default function LocationPicker({
             <Target size={24} color={Colors.primary} />
             <Text style={styles.coordinatesTitle}>Coordenadas del Campo</Text>
           </View>
-          
+
           <View style={styles.coordinatesInputs}>
             <View style={styles.coordinateInput}>
               <Text style={styles.coordinateLabel}>Latitud</Text>
@@ -323,7 +331,7 @@ export default function LocationPicker({
                 keyboardType="numeric"
               />
             </View>
-            
+
             <View style={styles.coordinateInput}>
               <Text style={styles.coordinateLabel}>Longitud</Text>
               <TextInput
@@ -336,15 +344,15 @@ export default function LocationPicker({
               />
             </View>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.useCoordinatesButton}
             onPress={handleUseCoordinates}
           >
             <Target size={16} color="white" />
             <Text style={styles.useCoordinatesButtonText}>Usar Coordenadas</Text>
           </TouchableOpacity>
-          
+
           {selectedLocation && (
             <View style={styles.selectedLocationInfo}>
               <View style={styles.markerIndicator}>
@@ -358,7 +366,7 @@ export default function LocationPicker({
                 📍 Lng: {selectedLocation.longitude.toFixed(6)}
               </Text>
               <View style={styles.locationActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.previewButton}
                   onPress={() => {
                     const url = `https://www.google.com/maps?q=${selectedLocation.latitude},${selectedLocation.longitude}&z=15`;
@@ -382,7 +390,7 @@ export default function LocationPicker({
             Introduce las coordenadas del campo de fútbol, busca por ciudad o usa el botón de navegación para obtener tu ubicación
           </Text>
           {selectedLocation && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.openMapsButton}
               onPress={() => {
                 const url = Platform.select({
@@ -410,8 +418,8 @@ export default function LocationPicker({
               <Text style={styles.openMapsButtonText}>Ver en Google Maps</Text>
             </TouchableOpacity>
           )}
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.manualLocationButton}
             onPress={() => {
               Alert.alert(
@@ -449,7 +457,8 @@ export default function LocationPicker({
             <Text style={styles.manualLocationButtonText}>Abrir Google Maps para seleccionar</Text>
           </TouchableOpacity>
         </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </Modal>
   );
 }
 

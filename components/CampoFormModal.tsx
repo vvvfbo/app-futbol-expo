@@ -1,19 +1,19 @@
+import { TIPOS_FUTBOL } from '@/constants/categories';
+import Colors from '@/constants/colors';
+import { CampoFutbol, TipoFutbol } from '@/types';
+import { MapPin, Save, Users, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
   Alert,
   Modal,
   ScrollView,
-  Switch
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { X, Save, MapPin, Users } from 'lucide-react-native';
-import Colors from '@/constants/colors';
-import { CampoFutbol, TipoFutbol } from '@/types';
-import { TIPOS_FUTBOL } from '@/constants/categories';
 import LocationPicker from './LocationPicker';
 
 interface CampoFormModalProps {
@@ -90,12 +90,12 @@ export default function CampoFormModal({
 
   const handleLocationSelect = (location: {
     address: string;
-    coordinates: { latitude: number; longitude: number };
+    coordinates?: { latitude: number; longitude: number };
   }) => {
     setFormData(prev => ({
       ...prev,
       direccion: location.address,
-      coordenadas: location.coordinates
+      coordenadas: location.coordinates || null
     }));
   };
 
@@ -107,6 +107,7 @@ export default function CampoFormModal({
         visible={visible}
         animationType="slide"
         presentationStyle="pageSheet"
+        transparent={false}
         onRequestClose={onClose}
       >
         <View style={styles.container}>
@@ -125,7 +126,7 @@ export default function CampoFormModal({
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Información Básica</Text>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Nombre del Campo</Text>
                 <TextInput
@@ -189,7 +190,7 @@ export default function CampoFormModal({
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Características</Text>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Superficie</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
@@ -218,9 +219,9 @@ export default function CampoFormModal({
                 <View style={styles.numberInputContainer}>
                   <TouchableOpacity
                     style={styles.numberButton}
-                    onPress={() => setFormData(prev => ({ 
-                      ...prev, 
-                      capacidad: Math.max(10, prev.capacidad - 10) 
+                    onPress={() => setFormData(prev => ({
+                      ...prev,
+                      capacidad: Math.max(10, prev.capacidad - 10)
                     }))}
                   >
                     <Text style={styles.numberButtonText}>-</Text>
@@ -228,9 +229,9 @@ export default function CampoFormModal({
                   <Text style={styles.numberValue}>{formData.capacidad}</Text>
                   <TouchableOpacity
                     style={styles.numberButton}
-                    onPress={() => setFormData(prev => ({ 
-                      ...prev, 
-                      capacidad: Math.min(1000, prev.capacidad + 10) 
+                    onPress={() => setFormData(prev => ({
+                      ...prev,
+                      capacidad: Math.min(1000, prev.capacidad + 10)
                     }))}
                   >
                     <Text style={styles.numberButtonText}>+</Text>
@@ -261,7 +262,7 @@ export default function CampoFormModal({
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Contacto y Precio</Text>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Teléfono (opcional)</Text>
                 <TextInput
@@ -306,15 +307,13 @@ export default function CampoFormModal({
         </View>
       </Modal>
 
-      <LocationPicker
-        visible={showLocationPicker}
-        onClose={() => setShowLocationPicker(false)}
-        onLocationSelect={handleLocationSelect}
-        initialLocation={formData.coordenadas ? {
-          address: formData.direccion,
-          coordinates: formData.coordenadas
-        } : undefined}
-      />
+      {showLocationPicker && (
+        <LocationPicker
+          onClose={() => setShowLocationPicker(false)}
+          onLocationSelect={handleLocationSelect}
+          initialAddress={formData.direccion}
+        />
+      )}
     </>
   );
 }

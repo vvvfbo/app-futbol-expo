@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  TextInput
-} from 'react-native';
-import { X, Shuffle, Users, Calendar, ArrowLeftRight, Save } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { Torneo, Equipo, Partido } from '@/types';
 import { useData } from '@/hooks/data-context';
+import { Equipo, Partido, Torneo } from '@/types';
+import { ArrowLeftRight, Calendar, Save, Shuffle, Users, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 interface TorneoManagementModalProps {
   visible: boolean;
@@ -42,8 +42,8 @@ export default function TorneoManagementModal({
   useEffect(() => {
     if (visible) {
       // Filtrar equipos disponibles por categoría y tipo
-      const disponibles = equipos.filter(e => 
-        e.categoria === torneo.categoria && 
+      const disponibles = equipos.filter(e =>
+        e.categoria === torneo.categoria &&
         e.tipoFutbol === torneo.tipoFutbol
       );
       setEquiposDisponibles(disponibles);
@@ -140,7 +140,7 @@ export default function TorneoManagementModal({
           <Text style={styles.saveButtonText}>Guardar</Text>
         </TouchableOpacity>
       </View>
-      
+
       <ScrollView style={styles.equiposList}>
         {equiposDisponibles.map(equipo => (
           <TouchableOpacity
@@ -166,7 +166,7 @@ export default function TorneoManagementModal({
           </TouchableOpacity>
         ))}
       </ScrollView>
-      
+
       <View style={styles.selectedCount}>
         <Users size={20} color={Colors.primary} />
         <Text style={styles.selectedCountText}>
@@ -179,13 +179,13 @@ export default function TorneoManagementModal({
   const renderPartidosTab = () => (
     <View style={styles.tabContent}>
       <Text style={styles.sectionTitle}>Gestión de Partidos</Text>
-      
+
       <ScrollView style={styles.partidosList}>
         {partidosEditables.map(partido => {
           const equipoLocal = equipos.find(e => e.id === partido.equipoLocalId);
           const equipoVisitante = equipos.find(e => e.id === partido.equipoVisitanteId);
           const isEditing = editingPartido === partido.id;
-          
+
           return (
             <View key={partido.id} style={styles.partidoCard}>
               <View style={styles.partidoHeader}>
@@ -193,7 +193,7 @@ export default function TorneoManagementModal({
                   {partido.fase ? `${partido.fase.charAt(0).toUpperCase() + partido.fase.slice(1)}` : `Jornada ${partido.jornada}`}
                   {partido.grupo && ` - Grupo ${partido.grupo}`}
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.editButton}
                   onPress={() => isEditing ? handleSavePartido() : handleEditPartido(partido)}
                 >
@@ -204,7 +204,7 @@ export default function TorneoManagementModal({
                   )}
                 </TouchableOpacity>
               </View>
-              
+
               {isEditing ? (
                 <View style={styles.editForm}>
                   <View style={styles.formRow}>
@@ -225,7 +225,7 @@ export default function TorneoManagementModal({
                       placeholder="HH:MM"
                     />
                   </View>
-                  
+
                   <Text style={styles.equiposEditTitle}>Cambiar Equipos:</Text>
                   <View style={styles.equiposEditRow}>
                     <View style={styles.equipoSelector}>
@@ -253,7 +253,7 @@ export default function TorneoManagementModal({
                         })}
                       </ScrollView>
                     </View>
-                    
+
                     <View style={styles.equipoSelector}>
                       <Text style={styles.selectorLabel}>Visitante:</Text>
                       <ScrollView style={styles.equipoSelectorScroll}>
@@ -316,14 +316,14 @@ export default function TorneoManagementModal({
       <Text style={styles.sectionDescription}>
         Realiza un nuevo sorteo aleatorio para reorganizar los equipos en el torneo.
       </Text>
-      
+
       <View style={styles.sorteoContainer}>
         <TouchableOpacity style={styles.sorteoButton} onPress={handleSorteoEquipos}>
           <Shuffle size={24} color="white" />
           <Text style={styles.sorteoButtonText}>Realizar Sorteo</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.equiposPreview}>
         <Text style={styles.previewTitle}>Orden Actual:</Text>
         {equiposSeleccionados.map((equipoId, index) => {
@@ -344,6 +344,7 @@ export default function TorneoManagementModal({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      transparent={false}
       onRequestClose={onClose}
     >
       <View style={styles.container}>
@@ -353,7 +354,7 @@ export default function TorneoManagementModal({
             <X size={24} color={Colors.text} />
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.torneoInfo}>
           <Text style={styles.torneoName}>{torneo.nombre}</Text>
           <Text style={styles.torneoDetails}>
@@ -371,7 +372,7 @@ export default function TorneoManagementModal({
               Equipos
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.tab, activeTab === 'partidos' && styles.tabActive]}
             onPress={() => setActiveTab('partidos')}
@@ -381,7 +382,7 @@ export default function TorneoManagementModal({
               Partidos
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.tab, activeTab === 'sorteo' && styles.tabActive]}
             onPress={() => setActiveTab('sorteo')}

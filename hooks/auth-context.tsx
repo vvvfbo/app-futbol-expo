@@ -1,21 +1,21 @@
-import createContextHook from '@nkzw/create-context-hook';
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  auth,
+  createUserWithEmailAndPassword,
+  db,
+  doc,
+  getDoc,
   onAuthStateChanged,
   sendPasswordResetEmail,
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  auth, 
-  db 
+  setDoc,
+  signInWithEmailAndPassword,
+  signOut,
+  updateDoc
 } from '@/config/firebase';
-import { User, RegisterFormData, LoginFormData } from '@/types';
+import { LoginFormData, RegisterFormData, User } from '@/types';
+import createContextHook from '@nkzw/create-context-hook';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 
 // Mock Firebase User type for development
 interface FirebaseUser {
@@ -46,10 +46,10 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       console.log('❌ loadUserData: UID is empty or invalid');
       return;
     }
-    
+
     try {
       console.log('🔍 Loading user data for UID:', uid);
-      
+
       // Primero intentar cargar desde AsyncStorage (datos de prueba)
       try {
         const currentUserData = await AsyncStorage.getItem('currentUser');
@@ -64,13 +64,13 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       } catch (asyncError) {
         console.log('ℹ️ No test user data found in AsyncStorage, trying Firebase...');
       }
-      
+
       // Si no hay datos de prueba, usar Firebase
       const userDoc = await getDoc(doc(db, 'users', uid));
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        
+
         // Validate user data structure
         if (userData && typeof userData === 'object' && userData.email && userData.id) {
           setUser(userData as User);
@@ -89,19 +89,19 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       }
     } catch (error: any) {
       console.error('❌ Error loading user data:', error);
-      
+
       // Handle JSON parsing errors specifically
       if (error?.message && (error.message.includes('JSON Parse error') || error.message.includes('Unexpected character'))) {
         console.error('🚨 JSON Parse error in loadUserData - clearing user state');
       }
-      
+
       setUser(null);
     }
   }, []);
 
   useEffect(() => {
     let isMounted = true;
-    
+
     // Función para cargar usuario de prueba si existe
     const loadTestUser = async () => {
       try {
@@ -119,7 +119,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       }
       return false;
     };
-    
+
     // Set a timeout to prevent hydration timeout
     const timeoutId = setTimeout(() => {
       if (isMounted) {
@@ -127,24 +127,24 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         setIsLoading(false);
       }
     }, 3000); // 3 second timeout for faster loading
-    
+
     // Primero intentar cargar usuario de prueba
     loadTestUser().then((hasTestUser) => {
       if (!isMounted) return;
-      
+
       if (hasTestUser) {
         clearTimeout(timeoutId);
         return; // Ya cargamos el usuario de prueba
       }
-      
+
       // Si no hay usuario de prueba, usar Firebase
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (!isMounted) return;
-        
+
         try {
           console.log('🔄 Auth state changed:', firebaseUser?.uid || 'null');
           setFirebaseUser(firebaseUser);
-          
+
           if (firebaseUser && firebaseUser.uid) {
             await loadUserData(firebaseUser.uid);
           } else {
@@ -152,12 +152,12 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
           }
         } catch (error: any) {
           console.error('❌ Error in auth state change handler:', error);
-          
+
           // Handle JSON parsing errors
           if (error?.message && (error.message.includes('JSON Parse error') || error.message.includes('Unexpected character'))) {
             console.error('🚨 JSON Parse error in auth state change - resetting auth state');
           }
-          
+
           setFirebaseUser(null);
           setUser(null);
         } finally {
@@ -167,7 +167,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
           }
         }
       });
-      
+
       return () => {
         isMounted = false;
         clearTimeout(timeoutId);
@@ -180,7 +180,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         clearTimeout(timeoutId);
       }
     });
-    
+
     return () => {
       isMounted = false;
       clearTimeout(timeoutId);
@@ -190,11 +190,11 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
   const login = useCallback(async (data: LoginFormData) => {
     try {
       console.log('🔐 Attempting login for:', data.email);
-      
+
       // Verificar si es el usuario de prueba
       if ((data.email === 'test@example.com' && data.password === 'test123') ||
-          (data.email === 'admin@futbolapp.com' && data.password === 'admin123') ||
-          (data.email === 'test@futbolapp.com' && data.password === 'test123')) {
+        (data.email === 'admin@futbolapp.com' && data.password === 'admin123') ||
+        (data.email === 'test@futbolapp.com' && data.password === 'test123')) {
         console.log('🧪 Using test user login');
         const currentUserData = await AsyncStorage.getItem('currentUser');
         if (currentUserData) {
@@ -205,17 +205,17 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
           return;
         }
       }
-      
+
       // Si no es usuario de prueba, usar Firebase
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       console.log('✅ Firebase login successful:', userCredential.user.uid);
-      
+
       // El usuario se cargará automáticamente por onAuthStateChanged
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      
+
       let errorMessage = 'Error al iniciar sesión';
-      
+
       // Handle JSON parsing errors
       if (error?.message && (error.message.includes('JSON Parse error') || error.message.includes('Unexpected character'))) {
         console.error('🚨 JSON Parse error in login');
@@ -239,7 +239,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
             break;
         }
       }
-      
+
       throw new Error(errorMessage);
     }
   }, []);
@@ -251,14 +251,13 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       console.log('👤 Rol:', data.rol);
       console.log('🏙️ Ciudad:', data.ciudad);
       console.log('📝 Nombre completo:', data.nombreCompleto);
-      console.log('🔐 Password length:', data.password?.length || 0);
-      console.log('✅ Confirm password matches:', data.password === data.confirmPassword);
-      
+      // Password validation logs removed for security
+
       // Validaciones básicas
       const email = data.email?.trim();
       const password = data.password?.trim();
       const nombreCompleto = data.nombreCompleto?.trim();
-      
+
       if (!email || !password || !nombreCompleto) {
         const missing = [];
         if (!email) missing.push('email');
@@ -266,34 +265,34 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         if (!nombreCompleto) missing.push('nombre completo');
         throw new Error(`Faltan datos obligatorios: ${missing.join(', ')}`);
       }
-      
+
       if (password.length < 6) {
         throw new Error('La contraseña debe tener al menos 6 caracteres');
       }
-      
+
       if (password !== data.confirmPassword?.trim()) {
         throw new Error('Las contraseñas no coinciden');
       }
-      
+
       // Validar formato de email
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         throw new Error('El formato del email no es válido');
       }
-      
+
       console.log('✅ Validaciones pasadas, creando usuario en Firebase Auth...');
       console.log('🌐 Platform:', Platform.OS);
       console.log('🔥 Firebase Auth instance:', !!auth);
       console.log('💾 Firestore instance:', !!db);
-      
+
       // Crear usuario en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
-      
+
       console.log('🎉 Firebase user created successfully!');
       console.log('🆔 User ID:', firebaseUser.uid);
       console.log('📧 User email:', firebaseUser.email);
-      
+
       // Preparar datos del usuario para Firestore
       const nombreParts = nombreCompleto.split(' ').filter(part => part.length > 0);
       const newUser: User = {
@@ -322,7 +321,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         fechaRegistro: new Date().toISOString(),
         ultimaActividad: new Date().toISOString()
       };
-      
+
       console.log('💾 Guardando usuario en Firestore...');
       console.log('📄 User document data:');
       console.log('  - ID:', newUser.id);
@@ -331,12 +330,12 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       console.log('  - Email:', newUser.email);
       console.log('  - Rol:', newUser.rol);
       console.log('  - Ciudad:', newUser.ciudad);
-      
+
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
       console.log('✅ User document created in Firestore successfully!');
-      
+
       console.log('🎯 === REGISTRO COMPLETADO EXITOSAMENTE ===');
-      
+
       // El usuario se cargará automáticamente por onAuthStateChanged
     } catch (error: any) {
       console.error('❌ === ERROR EN REGISTRO ===');
@@ -344,18 +343,18 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       console.error('📋 Error code:', error?.code || 'No code');
       console.error('💬 Error message:', error?.message || 'No message');
       console.error('🔧 Error name:', error?.name || 'No name');
-      
+
       if (error?.code) {
         console.error('🔥 Firebase error details:');
         console.error('  - Code:', error.code);
         console.error('  - Message:', error.message);
       }
-      
+
       // Log completo del error para debugging
       console.error('📊 Full error object:', error);
-      
+
       let errorMessage = 'Error desconocido al registrarse';
-      
+
       // Manejar errores de parsing JSON y conexión
       if (error?.message && (error.message.includes('JSON Parse error') || error.message.includes('Unexpected character'))) {
         console.error('🚨 JSON Parse error detected - Firebase connection issue');
@@ -395,7 +394,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         // Errores personalizados (validaciones)
         errorMessage = error.message;
       }
-      
+
       console.error('🚨 Final error message:', errorMessage);
       throw new Error(errorMessage);
     }
@@ -416,16 +415,16 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     if (!email?.trim()) {
       throw new Error('Email es requerido');
     }
-    
+
     try {
       const sanitizedEmail = email.trim();
       await sendPasswordResetEmail(auth, sanitizedEmail);
       console.log('Password reset email sent to:', sanitizedEmail);
     } catch (error: any) {
       console.error('Password reset error:', error);
-      
+
       let errorMessage = 'Error al enviar email de recuperación';
-      
+
       switch (error.code) {
         case 'auth/user-not-found':
           errorMessage = 'No existe un usuario con este email';
@@ -437,50 +436,50 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
           errorMessage = 'Error de conexión. Verifica tu internet.';
           break;
       }
-      
+
       throw new Error(errorMessage);
     }
   }, []);
 
   const actualizarUsuario = useCallback(async (userData: Partial<User>) => {
     if (!user || !firebaseUser || !userData) return;
-    
+
     try {
       const updatedUser = { ...user, ...userData };
-      
+
       // Actualizar en Firestore
       await updateDoc(doc(db, 'users', firebaseUser.uid), userData);
-      
+
       // Actualizar estado local
       setUser(updatedUser);
-      
+
       console.log('✅ User updated:', updatedUser.email);
     } catch (error: any) {
       console.error('❌ Error updating user:', error);
-      
+
       let errorMessage = 'Error al actualizar usuario';
-      
+
       // Handle JSON parsing errors
       if (error?.message && (error.message.includes('JSON Parse error') || error.message.includes('Unexpected character'))) {
         console.error('🚨 JSON Parse error in actualizarUsuario');
         errorMessage = 'Error de conexión. Intenta nuevamente.';
       }
-      
+
       throw new Error(errorMessage);
     }
   }, [user, firebaseUser]);
 
   const suscribirseATorneo = useCallback(async (torneoId: string) => {
     if (!user || user.rol !== 'espectador') return;
-    
+
     try {
       const torneosSubscritos = user.torneosSubscritos || [];
       if (torneosSubscritos.includes(torneoId)) return;
-      
+
       const updatedData = {
         torneosSubscritos: [...torneosSubscritos, torneoId]
       };
-      
+
       await actualizarUsuario(updatedData);
       console.log('✅ Suscrito al torneo:', torneoId);
     } catch (error) {
@@ -488,16 +487,16 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       throw error;
     }
   }, [user, actualizarUsuario]);
-  
+
   const desuscribirseATorneo = useCallback(async (torneoId: string) => {
     if (!user || user.rol !== 'espectador') return;
-    
+
     try {
       const torneosSubscritos = user.torneosSubscritos || [];
       const updatedData = {
         torneosSubscritos: torneosSubscritos.filter(id => id !== torneoId)
       };
-      
+
       await actualizarUsuario(updatedData);
       console.log('✅ Desuscrito del torneo:', torneoId);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { Club, Equipo, Jugador, Partido, PartidoAmistoso, Torneo } from '../types';
+import { Categoria, Club, Equipo, EstadoAmistoso, Jugador, Partido, PartidoAmistoso, TipoTorneo, Torneo } from '../types';
 
 // 🏆 Nombres de clubes realistas
 const CLUBES_NOMBRES = [
@@ -77,16 +77,32 @@ export class DataGenerator {
         const clubes: Club[] = [];
 
         for (let i = 0; i < Math.min(cantidad, CLUBES_NOMBRES.length); i++) {
+            const ciudadAleatoria = this.getRandomElement(['Madrid', 'Barcelona', 'Sevilla', 'Valencia', 'Bilbao', 'Málaga']);
             const club: Club = {
                 id: this.generateId(),
                 nombre: CLUBES_NOMBRES[i],
-                ciudad: this.getRandomElement(['Madrid', 'Barcelona', 'Sevilla', 'Valencia', 'Bilbao', 'Málaga']),
+                ubicacion: {
+                    direccion: `Calle ${this.getRandomElement(['Gran Vía', 'Castellana', 'Alcalá', 'Mayor'])}, ${Math.floor(Math.random() * 200 + 1)}`,
+                    ciudad: ciudadAleatoria,
+                    coordenadas: {
+                        latitud: 40.4168 + (Math.random() - 0.5) * 0.1,
+                        longitud: -3.7038 + (Math.random() - 0.5) * 0.1
+                    }
+                },
                 telefono: `+34 ${Math.floor(Math.random() * 900 + 600)} ${Math.floor(Math.random() * 900 + 100)} ${Math.floor(Math.random() * 900 + 100)}`,
                 email: `info@${CLUBES_NOMBRES[i].toLowerCase().replace(/\s+/g, '')}.com`,
-                direccion: `Calle ${this.getRandomElement(['Gran Vía', 'Castellana', 'Alcalá', 'Mayor'])}, ${Math.floor(Math.random() * 200 + 1)}`,
                 fechaCreacion: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-                equiposIds: [],
-                entrenadorId: 'test-user-123'
+                entrenadorId: 'test-user-123',
+                categorias: {
+                    juvenil: { nombre: 'Juvenil', equipos: [] },
+                    cadete: { nombre: 'Cadete', equipos: [] },
+                    infantil: { nombre: 'Infantil', equipos: [] }
+                },
+                estadisticas: {
+                    totalEquipos: 0,
+                    torneosParticipados: Math.floor(Math.random() * 5),
+                    amistososJugados: Math.floor(Math.random() * 20)
+                }
             };
             clubes.push(club);
         }
@@ -108,7 +124,7 @@ export class DataGenerator {
                     id: this.generateId(),
                     nombre: `${club.nombre} ${nombreCategoria}`,
                     clubId: club.id,
-                    categoria: this.getRandomElement(['A', 'B', 'C', 'D', 'E', 'F']),
+                    categoria: this.getRandomElement(['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'] as Categoria[]),
                     colores: {
                         principal: colores.principal,
                         secundario: colores.secundario
@@ -117,23 +133,26 @@ export class DataGenerator {
                     entrenadorId: 'test-user-123',
                     jugadores: this.generateJugadores(18 + Math.floor(Math.random() * 8)), // 18-25 jugadores
                     fechaCreacion: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString(),
-                    ciudad: club.ciudad,
+                    ciudad: club.ubicacion.ciudad,
                     estadisticas: {
                         partidosJugados: 0,
                         partidosGanados: 0,
                         partidosEmpatados: 0,
                         partidosPerdidos: 0,
-                        golesAFavor: 0,
-                        golesEnContra: 0,
-                        tarjetasAmarillas: 0,
-                        tarjetasRojas: 0
+                        golesFavor: 0,
+                        golesContra: 0,
+                        torneosParticipados: 0,
+                        torneosGanados: 0,
+                        amistososJugados: 0,
+                        amistososGanados: 0
                     }
                 };
 
                 equipos.push(equipo);
 
-                // Actualizar el club con el equipo
-                club.equiposIds.push(equipo.id);
+                // Agregar equipo a las categorías del club
+                const categoriaClub = Object.keys(club.categorias)[Math.floor(Math.random() * Object.keys(club.categorias).length)];
+                club.categorias[categoriaClub].equipos.push(equipo.id);
             }
         });
 
@@ -143,7 +162,7 @@ export class DataGenerator {
     // 👥 Generar jugadores
     private generateJugadores(cantidad: number): Jugador[] {
         const jugadores: Jugador[] = [];
-        const posiciones = ['Portero', 'Defensa', 'Centrocampista', 'Delantero'];
+        const posiciones: ('Portero' | 'Defensa' | 'Mediocampista' | 'Delantero')[] = ['Portero', 'Defensa', 'Mediocampista', 'Delantero'];
 
         for (let i = 0; i < cantidad; i++) {
             const jugador: Jugador = {
@@ -160,7 +179,7 @@ export class DataGenerator {
                     asistencias: Math.floor(Math.random() * 8),
                     tarjetasAmarillas: Math.floor(Math.random() * 3),
                     tarjetasRojas: Math.floor(Math.random() * 1),
-                    minutosJugados: Math.floor(Math.random() * 1800)
+                    porteriasCero: Math.floor(Math.random() * 5)
                 }
             };
             jugadores.push(jugador);
@@ -175,15 +194,20 @@ export class DataGenerator {
         const allPartidos: Partido[] = [];
 
         for (let i = 0; i < cantidad; i++) {
-            const tipoTorneo = this.getRandomElement(['liga', 'copa', 'grupos-eliminatorias'] as const);
+            const tipoTorneo = this.getRandomElement(['grupos', 'eliminatorias', 'grupos-eliminatorias'] as TipoTorneo[]);
             const equiposParticipantes = this.getRandomElements(equipos, 6 + Math.floor(Math.random() * 6)); // 6-12 equipos
 
             const torneo: Torneo = {
                 id: this.generateId(),
                 nombre: `${this.getRandomElement(['Liga', 'Copa', 'Torneo'])} ${this.getRandomElement(['Primavera', 'Otoño', 'Invierno', 'Verano'])} 2024`,
                 descripcion: `Competición ${tipoTorneo} con ${equiposParticipantes.length} equipos participantes`,
+                ciudad: this.getRandomElement(['Madrid', 'Barcelona', 'Sevilla', 'Valencia']),
+                categoria: this.getRandomElement(['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'] as Categoria[]),
+                tipoFutbol: this.getRandomElement(['F11', 'F7', 'Sala']),
+                maxEquipos: 16,
+                minEquipos: 4,
                 tipo: tipoTorneo,
-                estado: Math.random() > 0.3 ? 'activo' : 'finalizado',
+                estado: Math.random() > 0.3 ? 'En curso' : 'Finalizado',
                 fechaInicio: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000).toISOString(),
                 fechaFin: new Date(Date.now() + Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
                 equiposIds: equiposParticipantes.map(e => e.id),
@@ -195,12 +219,10 @@ export class DataGenerator {
                     puntosDerrota: 0,
                     tiempoPartido: 90,
                     descanso: 15,
-                    permitirEmpates: tipoTorneo !== 'copa',
-                    tiempoExtra: tipoTorneo === 'copa' ? 30 : 0,
-                    penales: tipoTorneo === 'copa'
-                },
-                clasificacion: this.generateClasificacion(equiposParticipantes),
-                goleadores: this.generateGoleadores(equiposParticipantes)
+                    permitirEmpates: tipoTorneo !== 'eliminatorias',
+                    equiposPorGrupo: tipoTorneo.includes('grupos') ? 4 : undefined,
+                    clasificadosPorGrupo: tipoTorneo.includes('grupos') ? 2 : undefined
+                }
             };
 
             torneos.push(torneo);
@@ -278,10 +300,10 @@ export class DataGenerator {
                         equipoVisitanteId: equipoVisitante.id,
                         fecha: fechaPartido.toISOString().split('T')[0],
                         hora: horaPartido,
-                        estado: esJugado ? 'Jugado' : 'Programado',
+                        estado: esJugado ? 'Jugado' : 'Pendiente',
                         jornada,
                         campoId: this.generateId(), // Se podría conectar con campos reales
-                        arbitro: `Árbitro ${Math.floor(Math.random() * 100) + 1}`,
+                        arbitroId: this.generateId(),
                         observaciones: '',
                         eventos: [],
                         goleadores: []
@@ -368,24 +390,25 @@ export class DataGenerator {
                 equipoVisitanteId: equipoVisitante.id,
                 fecha: fechaFutura.toISOString().split('T')[0],
                 hora: `${15 + Math.floor(Math.random() * 4)}:${Math.random() > 0.5 ? '00' : '30'}`,
-                lugar: `Campo ${Math.floor(Math.random() * 10) + 1}`,
-                estado: this.getRandomElement(['propuesto', 'confirmado', 'jugado', 'cancelado']),
-                equipoCreadorId: equipoLocal.id,
+                ubicacion: {
+                    direccion: `Campo ${Math.floor(Math.random() * 10) + 1}, Calle Deportes ${Math.floor(Math.random() * 100) + 1}`,
+                    coordenadas: {
+                        latitud: 40.4168 + (Math.random() - 0.5) * 0.1,
+                        longitud: -3.7038 + (Math.random() - 0.5) * 0.1
+                    }
+                },
+                estado: this.getRandomElement(['Disponible', 'Propuesto', 'Confirmado', 'Finalizado', 'Cancelado'] as EstadoAmistoso[]),
+                tipoFutbol: this.getRandomElement(['F11', 'F7', 'Sala']),
+                categoria: this.getRandomElement(['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'] as Categoria[]),
+                esDisponibilidad: Math.random() > 0.5,
                 fechaCreacion: new Date().toISOString(),
-                observaciones: '',
-                contacto: {
-                    nombre: `Entrenador ${equipoLocal.nombre}`,
-                    telefono: `+34 ${Math.floor(Math.random() * 900 + 600)} ${Math.floor(Math.random() * 900 + 100)} ${Math.floor(Math.random() * 900 + 100)}`,
-                    email: `entrenador@${equipoLocal.nombre.toLowerCase().replace(/\s+/g, '')}.com`
-                }
+                observaciones: ''
             };
 
-            // Si está jugado, agregar resultado
-            if (amistoso.estado === 'jugado') {
-                amistoso.resultado = {
-                    golesLocal: Math.floor(Math.random() * 5),
-                    golesVisitante: Math.floor(Math.random() * 5)
-                };
+            // Si está finalizado, agregar resultado
+            if (amistoso.estado === 'Finalizado') {
+                amistoso.golesLocal = Math.floor(Math.random() * 5);
+                amistoso.golesVisitante = Math.floor(Math.random() * 5);
             }
 
             amistosos.push(amistoso);

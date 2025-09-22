@@ -2,11 +2,8 @@ import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-context';
 import { useChat } from '@/hooks/chat-context';
 import { useData } from '@/hooks/data-context';
-import { useComprehensiveTester } from '@/hooks/use-comprehensive-tester';
-import { useTestDataGenerator } from '@/hooks/use-test-data-generator';
 import { router } from 'expo-router';
-import { Bell, Database, LogOut, MessageCircle, Settings, Trophy, User, Users } from 'lucide-react-native';
-import { useState } from 'react';
+import { Bell, LogOut, MessageCircle, Settings, Trophy, User, Users } from 'lucide-react-native';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,9 +12,6 @@ export default function PerfilScreen() {
   const { user, logout } = useAuth();
   const { equipos, torneos } = useData();
   const { getTotalUnreadCount } = useChat();
-  const { generarDatosPrueba, limpiarDatosPrueba, pruebaSimple, verificarDatos, probarPersistencia } = useTestDataGenerator();
-  const { runComprehensiveTest } = useComprehensiveTester();
-  const [loading, setLoading] = useState(false);
 
   const misEquipos = user?.rol === 'entrenador' ? equipos.filter(e => e.entrenadorId === user?.id) : [];
   const misTorneos = user?.rol === 'entrenador' ? torneos.filter(t =>
@@ -25,16 +19,6 @@ export default function PerfilScreen() {
   ) : [];
 
   const totalUnreadChats = getTotalUnreadCount();
-
-  // Función de prueba súper simple
-  const pruebaSimpleConsole = () => {
-    console.log('🚨 PRUEBA SIMPLE CONSOLE - BOTÓN FUNCIONA!');
-    console.log('👤 Usuario:', user);
-    console.log('⚽ Equipos totales:', equipos.length);
-    console.log('🏆 Torneos totales:', torneos.length);
-    console.log('📝 Mis equipos:', misEquipos.length);
-    Alert.alert('✅ Prueba Console', 'Revisa la consola del navegador (F12)');
-  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -56,67 +40,6 @@ export default function PerfilScreen() {
 
   const handleOpenChats = () => {
     router.push('/chats');
-  };
-
-  const handleGenerateTestData = () => {
-    console.log('🎯 Botón presionado, usuario:', user?.nombre, 'rol:', user?.rol);
-    Alert.alert(
-      '🚀 Generar Datos de Prueba',
-      `¡Hola ${user?.nombre}! ¿Quieres crear datos de prueba completos?\n\n✅ 1 Club con ubicación\n⚽ 6 Equipos españoles\n👥 90 Jugadores (15 por equipo)\n🏆 1 Torneo con partidos\n\nEsto te permitirá probar todas las funciones de la app.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: '🎯 ¡CREAR!',
-          onPress: () => {
-            console.log('� CLICK DETECTADO EN EL BOTÓN');
-            console.log('🔍 Testing functions availability...');
-            console.log('generarDatosPrueba:', typeof generarDatosPrueba, !!generarDatosPrueba);
-            console.log('setLoading:', typeof setLoading, !!setLoading);
-            console.log('user:', typeof user, !!user);
-
-            // Función async separada para mejor manejo de errores
-            const executeGenerator = async () => {
-              try {
-                console.log('🚀 Iniciando proceso de generación...');
-                console.log('⏳ Llamando setLoading(true)...');
-                setLoading(true);
-
-                console.log('📞 Llamando generarDatosPrueba()...');
-                const result = await generarDatosPrueba();
-                console.log('📊 Resultado del generador:', result);
-
-                if (result.success) {
-                  Alert.alert(
-                    '🎉 ¡Éxito Total!',
-                    `¡Datos creados correctamente!\n\n✅ Club: Club Deportivo Prueba\n⚽ Equipos: ${result.data?.equiposIds?.length || 6}\n🏆 Torneo: Copa de Prueba 2024\n📅 Partidos: ${result.data?.partidosCreados || 15}\n\n¡Ve a explorar tus nuevos datos!`
-                  );
-                } else {
-                  Alert.alert('❌ Error', `No se pudieron generar los datos:\n\n${result.error || 'Error desconocido'}\n\n¿Intentar de nuevo?`);
-                }
-              } catch (error) {
-                console.error('💥 Error capturado:', error);
-                console.error('💥 Error tipo:', typeof error);
-                console.error('💥 Error nombre:', error instanceof Error ? error.name : 'No es Error');
-                console.error('💥 Error mensaje:', error instanceof Error ? error.message : 'Sin mensaje');
-                console.error('💥 Error stack:', error instanceof Error ? error.stack : 'Sin stack');
-                Alert.alert('💥 Error Inesperado', `Algo salió mal:\n\n${error instanceof Error ? error.message : 'Error desconocido'}\n\n¿Intentar de nuevo?`);
-              } finally {
-                setLoading(false);
-                console.log('✅ Proceso completado, loading = false');
-              }
-            };
-
-            // Ejecutar la función inmediatamente
-            console.log('🚀 Ejecutando executeGenerator()...');
-            executeGenerator().catch((error) => {
-              console.error('💥 Error no capturado en executeGenerator:', error);
-              Alert.alert('💥 Error Fatal', 'Error crítico en la generación de datos');
-              setLoading(false);
-            });
-          }
-        }
-      ]
-    );
   };
 
   return (
@@ -152,41 +75,37 @@ export default function PerfilScreen() {
                 {user?.rol === 'entrenador' ? 'Entrenador' : 'Espectador'}
               </Text>
             </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Teléfono:</Text>
+              <Text style={styles.infoValue}>{user?.telefono}</Text>
+            </View>
           </View>
         </View>
 
-        {user?.rol === 'entrenador' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Estadísticas</Text>
-            <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <Users size={24} color={Colors.primary} />
-                <Text style={styles.statNumber}>{misEquipos.length}</Text>
-                <Text style={styles.statLabel}>Equipos</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Trophy size={24} color={Colors.primary} />
-                <Text style={styles.statNumber}>{misTorneos.length}</Text>
-                <Text style={styles.statLabel}>Torneos</Text>
-              </View>
-              <View style={styles.statCard}>
-                <User size={24} color={Colors.primary} />
-                <Text style={styles.statNumber}>
-                  {misEquipos.reduce((total, equipo) => total + (equipo.jugadores?.length || 0), 0)}
-                </Text>
-                <Text style={styles.statLabel}>Jugadores</Text>
-              </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Estadísticas</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Users size={28} color={Colors.primary} />
+              <Text style={styles.statNumber}>{misEquipos.length}</Text>
+              <Text style={styles.statLabel}>Mis Equipos</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Trophy size={28} color={Colors.success} />
+              <Text style={styles.statNumber}>{misTorneos.length}</Text>
+              <Text style={styles.statLabel}>Mis Torneos</Text>
             </View>
           </View>
-        )}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acciones</Text>
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/notificaciones')}
           >
-            <Bell size={20} color={Colors.textLight} />
+            <Bell size={20} color={Colors.primary} />
             <Text style={styles.actionButtonText}>Notificaciones</Text>
           </TouchableOpacity>
 
@@ -195,11 +114,11 @@ export default function PerfilScreen() {
             onPress={handleOpenChats}
           >
             <View style={styles.chatIconContainer}>
-              <MessageCircle size={20} color={Colors.textLight} />
+              <MessageCircle size={20} color={Colors.primary} />
               {totalUnreadChats > 0 && (
                 <View style={styles.chatBadge}>
                   <Text style={styles.chatBadgeText}>
-                    {totalUnreadChats > 99 ? '99+' : totalUnreadChats}
+                    {totalUnreadChats > 9 ? '9+' : totalUnreadChats}
                   </Text>
                 </View>
               )}
@@ -211,195 +130,13 @@ export default function PerfilScreen() {
             style={styles.actionButton}
             onPress={() => router.push('/configuracion')}
           >
-            <Settings size={20} color={Colors.textLight} />
+            <Settings size={20} color={Colors.primary} />
             <Text style={styles.actionButtonText}>Configuración</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionButton}>
-            <Trophy size={20} color={Colors.textLight} />
+            <Trophy size={20} color={Colors.primary} />
             <Text style={styles.actionButtonText}>Historial de Torneos</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, loading && styles.disabledButton, { backgroundColor: Colors.primary }]}
-            onPress={handleGenerateTestData}
-            disabled={loading}
-          >
-            <Database size={20} color="white" />
-            <Text style={[styles.actionButtonText, { color: 'white', fontWeight: 'bold' }]}>
-              {loading ? 'Generando Datos...' : '🚀 GENERAR DATOS DE PRUEBA'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#ff9500', marginTop: 10 }]}
-            onPress={async () => {
-              console.log('🧪 Botón prueba simple presionado');
-              try {
-                setLoading(true);
-                const result = await pruebaSimple();
-                console.log('🧪 Resultado prueba simple:', result);
-
-                if (result.success) {
-                  Alert.alert('✅ Prueba Simple', 'Club de prueba creado correctamente!');
-                } else {
-                  Alert.alert('❌ Error Prueba', result.error || 'Error en prueba simple');
-                }
-              } catch (error) {
-                console.error('💥 Error prueba simple:', error);
-                Alert.alert('💥 Error', 'Error inesperado en prueba simple');
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
-          >
-            <Database size={20} color="white" />
-            <Text style={[styles.actionButtonText, { color: 'white' }]}>
-              🧪 PRUEBA SIMPLE (Solo Club)
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Botón de prueba súper simple */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#FF6B6B' }]}
-            onPress={pruebaSimpleConsole}
-          >
-            <Database size={20} color="white" />
-            <Text style={[styles.actionButtonText, { color: 'white' }]}>
-              🚨 PRUEBA CONSOLE SIMPLE
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Botón de verificación de datos */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors.info }]}
-            onPress={async () => {
-              console.log('🔥 BOTÓN VERIFICAR PRESIONADO!');
-              console.log('🔧 Función verificarDatos:', typeof verificarDatos);
-
-              try {
-                console.log('🔍 Verificando datos guardados...');
-
-                if (!verificarDatos) {
-                  console.error('❌ verificarDatos no está disponible!');
-                  Alert.alert('❌ Error', 'Función verificarDatos no disponible');
-                  return;
-                }
-
-                const result = await verificarDatos();
-                console.log('📊 Resultado verificación:', result);
-
-                Alert.alert(
-                  '🔍 Verificación de Datos',
-                  result.success
-                    ? `✅ ${result.data?.message || 'Verificación completada'}\n\n📊 Total elementos: ${result.data?.totalDatos || 0}\n\n💡 Revisa la consola para más detalles.`
-                    : `❌ Error: ${result.error}`
-                );
-              } catch (error) {
-                console.error('💥 Error verificación:', error);
-                Alert.alert('💥 Error', 'Error inesperado en verificación');
-              }
-            }}
-          >
-            <Database size={20} color="white" />
-            <Text style={[styles.actionButtonText, { color: 'white' }]}>
-              🔍 VERIFICAR DATOS GUARDADOS
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Botón de test comprehensivo */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#9C27B0' }]}
-            onPress={async () => {
-              console.log('🔬 INICIANDO TEST COMPREHENSIVO COMPLETO');
-
-              try {
-                setLoading(true);
-                const results = await runComprehensiveTest();
-
-                const totalTests = Object.keys(results).length;
-                const passedTests = Object.values(results).filter(Boolean).length;
-                const percentage = Math.round((passedTests / totalTests) * 100);
-
-                Alert.alert(
-                  '🔬 Test Comprehensivo Completado',
-                  `📊 Resultados: ${passedTests}/${totalTests} tests pasados (${percentage}%)\n\n` +
-                  `${percentage === 100 ? '🎉 ¡TODOS LOS TESTS PASARON!' :
-                    percentage >= 75 ? '⚠️ La mayoría pasaron, revisar fallos' :
-                      '💥 Múltiples fallos detectados'}\n\n` +
-                  '🔍 Revisa la consola para detalles completos de cada test.',
-                  [{ text: 'OK', style: 'default' }]
-                );
-              } catch (error) {
-                console.error('💥 Error en test comprehensivo:', error);
-                Alert.alert('💥 Error', 'Error inesperado ejecutando el test comprehensivo');
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
-          >
-            <Database size={20} color="white" />
-            <Text style={[styles.actionButtonText, { color: 'white' }]}>
-              {loading ? 'Ejecutando Tests...' : '🔬 TEST COMPREHENSIVO COMPLETO'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Botón de prueba de persistencia */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#FF5722' }]}
-            onPress={async () => {
-              console.log('🔧 INICIANDO PRUEBA DE PERSISTENCIA');
-
-              try {
-                if (!probarPersistencia) {
-                  Alert.alert('❌ Error', 'Función probarPersistencia no disponible');
-                  return;
-                }
-
-                setLoading(true);
-                const result = await probarPersistencia();
-
-                if (result.success) {
-                  Alert.alert(
-                    '✅ Persistencia OK',
-                    `🎉 ¡Prueba exitosa!\n\n` +
-                    `📋 Detalles:\n` +
-                    `• Club creado: ${result.data?.clubId}\n` +
-                    `• Equipo creado: ${result.data?.equipoId}\n` +
-                    `• Jugadores agregados: ${result.data?.jugadoresAgregados}\n\n` +
-                    `${result.data?.mensaje}\n\n` +
-                    `✅ No hay race conditions detectados`
-                  );
-                } else {
-                  Alert.alert(
-                    '❌ Error de Persistencia',
-                    `💥 Se detectó un problema:\n\n${result.error}\n\n` +
-                    `🔧 Esto indica que hay problemas de race condition o persistencia.\n` +
-                    `Revisa la consola para más detalles.`
-                  );
-                }
-              } catch (error) {
-                console.error('💥 Error en prueba persistencia:', error);
-                Alert.alert('💥 Error', 'Error inesperado en prueba de persistencia');
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
-          >
-            <Database size={20} color="white" />
-            <Text style={[styles.actionButtonText, { color: 'white' }]}>
-              {loading ? 'Probando...' : '🔧 PROBAR PERSISTENCIA REAL'}
-            </Text>
           </TouchableOpacity>
         </View>
 
@@ -601,11 +338,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  disabledText: {
-    color: Colors.textSecondary,
   },
 });

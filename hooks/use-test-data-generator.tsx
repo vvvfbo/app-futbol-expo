@@ -82,7 +82,7 @@ export const useTestDataGenerator = () => {
             try {
                 const allKeys = await AsyncStorage.getAllKeys();
                 console.log(`📋 Total claves en AsyncStorage: ${allKeys.length}`);
-                
+
                 for (const key of allKeys) {
                     const value = await AsyncStorage.getItem(key);
                     if (value) {
@@ -287,11 +287,11 @@ export const useTestDataGenerator = () => {
     const limpiarDatosPrueba = async () => {
         try {
             console.log('🧹 === LIMPIEZA FORZADA DE ASYNCSTORAGE ===');
-            
+
             // Lista de todas las claves que pueden tener datos corruptos
             const keys = [
                 'clubes',
-                'equipos', 
+                'equipos',
                 'torneos',
                 'partidos',
                 'jugadores',
@@ -318,7 +318,7 @@ export const useTestDataGenerator = () => {
             try {
                 const allKeys = await AsyncStorage.getAllKeys();
                 console.log('📋 Todas las claves encontradas:', allKeys);
-                
+
                 if (allKeys.length > 0) {
                     await AsyncStorage.multiRemove(allKeys);
                     console.log('🧨 TODAS las claves eliminadas');
@@ -333,8 +333,8 @@ export const useTestDataGenerator = () => {
             console.log('📄 Claves restantes:', remainingKeys);
 
             console.log('✅ === LIMPIEZA COMPLETADA ===');
-            return { 
-                success: true, 
+            return {
+                success: true,
                 message: `Limpieza completada. ${keys.length} claves procesadas.`,
                 remainingKeys: remainingKeys.length
             };
@@ -481,11 +481,30 @@ export const useTestDataGenerator = () => {
         }
     };
 
+    // Funciones adicionales requeridas por los tests
+    const generateTestData = async () => {
+        return await generarDatosPrueba();
+    };
+
+    const clearAllData = async () => {
+        return await limpiarDatosPrueba();
+    };
+
+    const MOCK_USERS = [
+        { id: '1', email: 'admin@futbolapp.com', name: 'Admin Test' },
+        { id: '2', email: 'test@futbolapp.com', name: 'Test User' },
+        { id: '3', email: 'user@example.com', name: 'Example User' }
+    ];
+
     return {
         generarDatosPrueba,
         limpiarDatosPrueba,
         pruebaSimple,
         verificarDatos,
-        probarPersistencia
+        probarPersistencia,
+        // Funciones adicionales para tests
+        generateTestData,
+        clearAllData,
+        MOCK_USERS
     };
 };

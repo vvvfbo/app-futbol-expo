@@ -1,36 +1,35 @@
-import { useState, useEffect } from 'react';
+import EscudoSelector from '@/components/EscudoSelector';
+import { CIUDADES, COLORES_EQUIPO, TIPOS_FUTBOL } from '@/constants/categories';
+import Colors from '@/constants/colors';
+import { useAuth } from '@/hooks/auth-context';
+import { useData } from '@/hooks/data-context';
+import { Categoria, TipoFutbol, ValidationError } from '@/types';
+import { getFieldError, validateEquipo } from '@/utils/validation';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Camera, MapPin, Upload, Users } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Image
+  View
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@/hooks/auth-context';
-import { useData } from '@/hooks/data-context';
-import Colors from '@/constants/colors';
-import { COLORES_EQUIPO, CIUDADES } from '@/constants/categories';
-import { validateEquipo, getFieldError } from '@/utils/validation';
-import { ValidationError, Categoria, TipoFutbol } from '@/types';
-import { Users, MapPin, Camera, Upload, ArrowLeft } from 'lucide-react-native';
-import EscudoSelector from '@/components/EscudoSelector';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const TIPOS_FUTBOL: TipoFutbol[] = ['F11', 'F7', 'Sala'];
 const CATEGORIAS_LETRAS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: string }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { crearEquipo, clubes, agregarEquipoAClub } = useData();
-  
+
   const club = clubes.find(c => c.id === clubId);
-  
+
   const [nombre, setNombre] = useState('');
   const [ciudad, setCiudad] = useState(club?.ubicacion.ciudad || user?.ciudad || CIUDADES[0]);
   const [categoriaSeleccionada] = useState<Categoria>(categoria as Categoria || 'Senior');
@@ -40,8 +39,7 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
   const [colorSecundario, setColorSecundario] = useState(COLORES_EQUIPO[1].valor);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showCiudades, setShowCiudades] = useState(false);
-  const [showTipoFutbol, setShowTipoFutbol] = useState(false);
+
   const [escudoUrl, setEscudoUrl] = useState<string>('');
   const [showEscudoSelector, setShowEscudoSelector] = useState(false);
 
@@ -80,7 +78,7 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
 
     // Generar nombre final con letra de categoría
     const nombreFinal = `${nombre} ${categoriaLetra}`;
-    
+
     const equipoData = {
       nombre: nombreFinal,
       ciudad,
@@ -111,20 +109,20 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
       console.log('🏗️ Es para club:', !!club);
       console.log('🏗️ Club ID:', club?.id);
       console.log('🏗️ Usuario ID:', user.id);
-      
+
       const equipoCompleto = {
         ...equipoData,
         jugadores: [],
         escudo: escudoUrl || undefined,
         escudoLocal: escudoUrl || undefined
       };
-      
+
       console.log('🏗️ Equipo completo a crear:', equipoCompleto);
-      
+
       const equipoId = await crearEquipo(equipoCompleto);
-      
+
       console.log('✅ Equipo creado con ID:', equipoId);
-      
+
       // Agregar equipo al club
       if (equipoId) {
         console.log('🔗 Agregando equipo al club...');
@@ -136,9 +134,9 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
           Alert.alert('Advertencia', 'El equipo se creó pero hubo un problema al agregarlo al club. Puedes intentar agregarlo manualmente.');
         }
       }
-      
+
       console.log('🏗️ === PROCESO COMPLETADO ===');
-      
+
       Alert.alert(
         'Éxito',
         'Equipo agregado al club correctamente.',
@@ -243,156 +241,136 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
           {/* Tipo de Fútbol */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tipo de Fútbol *</Text>
-            <TouchableOpacity 
-              style={styles.inputContainer}
-              onPress={() => setShowTipoFutbol(!showTipoFutbol)}
-            >
-              <Text style={styles.inputText}>{tipoFutbol}</Text>
-            </TouchableOpacity>
-            {showTipoFutbol && (
-              <ScrollView style={styles.dropdown} nestedScrollEnabled>
-                {TIPOS_FUTBOL.map((tipo) => (
-                  <TouchableOpacity
-                    key={tipo}
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setTipoFutbol(tipo);
-                      setShowTipoFutbol(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownItemText}>{tipo}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Ubicación *</Text>
-          <TouchableOpacity 
-            style={[
-              styles.inputContainer,
-              getFieldError(errors, 'ciudad') && styles.inputError
-            ]}
-            onPress={() => setShowCiudades(!showCiudades)}
-          >
-            <MapPin size={20} color={Colors.textLight} style={styles.inputIcon} />
-            <Text style={styles.inputText}>{ciudad}</Text>
-          </TouchableOpacity>
-          {getFieldError(errors, 'ciudad') && (
-            <Text style={styles.errorText}>{getFieldError(errors, 'ciudad')}</Text>
-          )}
-          {showCiudades && (
-            <ScrollView style={styles.dropdown} nestedScrollEnabled>
-              {CIUDADES.map((c) => (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsScroll}>
+              {TIPOS_FUTBOL.map((tipo) => (
                 <TouchableOpacity
-                  key={c}
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setCiudad(c);
-                    setShowCiudades(false);
-                  }}
+                  key={tipo.value}
+                  style={[styles.optionChip, tipoFutbol === tipo.value && styles.optionChipActive]}
+                  onPress={() => setTipoFutbol(tipo.value)}
                 >
-                  <Text style={styles.dropdownItemText}>{c}</Text>
+                  <Users size={14} color={tipoFutbol === tipo.value ? 'white' : Colors.textLight} />
+                  <Text style={[styles.optionChipText, tipoFutbol === tipo.value && styles.optionChipTextActive]}>
+                    {tipo.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          )}
-        </View>
-
-
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Color Principal</Text>
-          <View style={styles.colorGrid}>
-            {COLORES_EQUIPO.map(color => (
-              <TouchableOpacity
-                key={color.valor}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color.valor },
-                  colorPrincipal === color.valor && styles.colorSelected
-                ]}
-                onPress={() => setColorPrincipal(color.valor)}
-              >
-                {color.valor === '#FFFFFF' && (
-                  <View style={styles.whiteColorBorder} />
-                )}
-              </TouchableOpacity>
-            ))}
           </View>
-        </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Color Secundario</Text>
-          <View style={styles.colorGrid}>
-            {COLORES_EQUIPO.map(color => (
-              <TouchableOpacity
-                key={color.valor}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color.valor },
-                  colorSecundario === color.valor && styles.colorSelected
-                ]}
-                onPress={() => setColorSecundario(color.valor)}
-              >
-                {color.valor === '#FFFFFF' && (
-                  <View style={styles.whiteColorBorder} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Escudo del Equipo (Opcional)</Text>
-          <View style={styles.escudoSection}>
-            {escudoUrl ? (
-              <View style={styles.escudoPreview}>
-                <Image source={{ uri: escudoUrl }} style={styles.escudoImage} />
-                <TouchableOpacity 
-                  style={styles.removeEscudoButton}
-                  onPress={() => setEscudoUrl('')}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Ubicación *</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsScroll}>
+              {CIUDADES.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={[styles.optionChip, ciudad === c && styles.optionChipActive]}
+                  onPress={() => setCiudad(c)}
                 >
-                  <Text style={styles.removeEscudoText}>✕</Text>
+                  <MapPin size={14} color={ciudad === c ? 'white' : Colors.textLight} />
+                  <Text style={[styles.optionChipText, ciudad === c && styles.optionChipTextActive]}>
+                    {c}
+                  </Text>
                 </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.escudoPlaceholder}>
-                <Camera size={32} color={Colors.textLight} />
-                <Text style={styles.escudoPlaceholderText}>Sin escudo</Text>
-              </View>
+              ))}
+            </ScrollView>
+            {getFieldError(errors, 'ciudad') && (
+              <Text style={styles.errorText}>{getFieldError(errors, 'ciudad')}</Text>
             )}
-            <View style={styles.escudoButtons}>
-              <TouchableOpacity 
-                style={styles.escudoButton}
-                onPress={() => setShowEscudoSelector(true)}
-              >
-                <Upload size={16} color={Colors.primary} />
-                <Text style={styles.escudoButtonText}>
-                  Seleccionar Escudo
-                </Text>
-              </TouchableOpacity>
+          </View>
+
+
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Color Principal</Text>
+            <View style={styles.colorGrid}>
+              {COLORES_EQUIPO.map(color => (
+                <TouchableOpacity
+                  key={color.valor}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color.valor },
+                    colorPrincipal === color.valor && styles.colorSelected
+                  ]}
+                  onPress={() => setColorPrincipal(color.valor)}
+                >
+                  {color.valor === '#FFFFFF' && (
+                    <View style={styles.whiteColorBorder} />
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
-        </View>
 
-        <View style={styles.preview}>
-          <Text style={styles.previewLabel}>Vista Previa</Text>
-          <View style={styles.previewColors}>
-            <View style={[styles.previewColor, { backgroundColor: colorPrincipal }]} />
-            <View style={[styles.previewColor, { backgroundColor: colorSecundario }]} />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Color Secundario</Text>
+            <View style={styles.colorGrid}>
+              {COLORES_EQUIPO.map(color => (
+                <TouchableOpacity
+                  key={color.valor}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color.valor },
+                    colorSecundario === color.valor && styles.colorSelected
+                  ]}
+                  onPress={() => setColorSecundario(color.valor)}
+                >
+                  {color.valor === '#FFFFFF' && (
+                    <View style={styles.whiteColorBorder} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Escudo del Equipo (Opcional)</Text>
+            <View style={styles.escudoSection}>
+              {escudoUrl ? (
+                <View style={styles.escudoPreview}>
+                  <Image source={{ uri: escudoUrl }} style={styles.escudoImage} />
+                  <TouchableOpacity
+                    style={styles.removeEscudoButton}
+                    onPress={() => setEscudoUrl('')}
+                  >
+                    <Text style={styles.removeEscudoText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.escudoPlaceholder}>
+                  <Camera size={32} color={Colors.textLight} />
+                  <Text style={styles.escudoPlaceholderText}>Sin escudo</Text>
+                </View>
+              )}
+              <View style={styles.escudoButtons}>
+                <TouchableOpacity
+                  style={styles.escudoButton}
+                  onPress={() => setShowEscudoSelector(true)}
+                >
+                  <Upload size={16} color={Colors.primary} />
+                  <Text style={styles.escudoButtonText}>
+                    Seleccionar Escudo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.preview}>
+            <Text style={styles.previewLabel}>Vista Previa</Text>
+            <View style={styles.previewColors}>
+              <View style={[styles.previewColor, { backgroundColor: colorPrincipal }]} />
+              <View style={[styles.previewColor, { backgroundColor: colorSecundario }]} />
+            </View>
+          </View>
 
           <View style={styles.buttons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.button, styles.cancelButton]}
               onPress={() => router.back()}
             >
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.button, styles.createButton]}
               onPress={handleCrear}
               disabled={isLoading}
@@ -408,7 +386,7 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
           </View>
         </View>
       </ScrollView>
-      
+
       <EscudoSelector
         visible={showEscudoSelector}
         onClose={() => setShowEscudoSelector(false)}
@@ -421,17 +399,17 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
 
 export default function CrearEquipoScreen() {
   const { clubId, categoria } = useLocalSearchParams();
-  
+
   // Redirigir si no hay clubId - solo se puede crear equipos desde clubes
   if (!clubId) {
     router.replace('/(tabs)/(clubes)/clubes');
     return null;
   }
-  
+
   return (
-    <CrearEquipoContent 
-      clubId={clubId as string} 
-      categoria={categoria as string} 
+    <CrearEquipoContent
+      clubId={clubId as string}
+      categoria={categoria as string}
     />
   );
 }
@@ -729,5 +707,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.primary,
     fontWeight: '500',
+  },
+  optionsScroll: {
+    maxHeight: 40,
+  },
+  optionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 4,
+  },
+  optionChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  optionChipText: {
+    fontSize: 14,
+    color: Colors.textLight,
+  },
+  optionChipTextActive: {
+    color: 'white',
   },
 });

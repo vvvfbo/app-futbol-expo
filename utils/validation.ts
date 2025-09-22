@@ -1,4 +1,4 @@
-import { ValidationError, RegisterFormData, LoginFormData, Equipo, Torneo, Jugador } from '@/types';
+import { Equipo, Jugador, LoginFormData, RegisterFormData, Torneo, ValidationError } from '@/types';
 
 export const validateEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,23 +21,23 @@ export const validatePhone = (phone: string): boolean => {
 export const validateDate = (date: string): boolean => {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(date)) return false;
-  
+
   const parsedDate = new Date(date);
   return parsedDate instanceof Date && !isNaN(parsedDate.getTime());
 };
 
 export const validateAge = (birthDate: string, minAge: number = 16): boolean => {
   if (!validateDate(birthDate)) return false;
-  
+
   const today = new Date();
   const birth = new Date(birthDate);
   const age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
     return age - 1 >= minAge;
   }
-  
+
   return age >= minAge;
 };
 
@@ -186,7 +186,7 @@ export const validateJugador = (data: Partial<Jugador>, equipoJugadores: Jugador
     });
   } else {
     // Verificar que el número no esté ocupado
-    const numeroOcupado = equipoJugadores.some(j => 
+    const numeroOcupado = equipoJugadores.some(j =>
       j.id !== data.id && j.numero === data.numero
     );
     if (numeroOcupado) {
@@ -240,7 +240,7 @@ export const validateTorneo = (data: Partial<Torneo>): ValidationError[] => {
     const fechaInicio = new Date(data.fechaInicio);
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    
+
     if (fechaInicio < hoy) {
       errors.push({
         field: 'fechaInicio',
@@ -276,6 +276,36 @@ export const validateTorneo = (data: Partial<Torneo>): ValidationError[] => {
 export const getFieldError = (errors: ValidationError[], field: string): string | undefined => {
   const error = errors.find(e => e.field === field);
   return error?.message;
+};
+
+export const validateClub = (clubData: any): ValidationError[] => {
+  const errors: ValidationError[] = [];
+
+  // Validar nombre del club
+  if (!clubData.nombre || !validateRequired(clubData.nombre)) {
+    errors.push({
+      field: 'nombre',
+      message: 'El nombre del club es obligatorio'
+    });
+  }
+
+  // Validar dirección si existe
+  if (clubData.direccion && !validateRequired(clubData.direccion.direccion)) {
+    errors.push({
+      field: 'direccion',
+      message: 'La dirección es obligatoria si se proporciona'
+    });
+  }
+
+  // Validar ciudad si existe
+  if (clubData.direccion && !validateRequired(clubData.direccion.ciudad)) {
+    errors.push({
+      field: 'ciudad',
+      message: 'La ciudad es obligatoria si se proporciona dirección'
+    });
+  }
+
+  return errors;
 };
 
 export const formatDate = (date: string): string => {

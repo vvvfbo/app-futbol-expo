@@ -16,60 +16,21 @@ const mockUserData = new Map<string, any>();
 let currentUser: MockUser | null = null;
 let authStateListeners: ((user: MockUser | null) => void)[] = [];
 
-// Usuario maestro para pruebas
-const MASTER_USER = {
-  email: 'admin@futbolapp.com',
-  password: 'admin123',
-  uid: 'master-admin-uid',
+// Usuario de prueba sin credenciales (solo para desarrollo)
+const TEST_USER_TEMPLATE = {
+  uid: 'dev-user-template',
   userData: {
-    id: 'master-admin-uid',
-    nombre: 'Admin',
-    apellidos: 'Master',
-    email: 'admin@futbolapp.com',
-    telefono: '+34 600 000 000',
+    id: 'dev-user-template',
+    nombre: 'Usuario',
+    apellidos: 'Prueba',
+    email: 'test@example.com',
+    telefono: '+00 000 000 000',
     fechaNacimiento: '1990-01-01',
     rol: 'entrenador' as const,
-    ciudad: 'Madrid',
+    ciudad: 'Ciudad',
     torneosSubscritos: [],
     equiposCreados: [],
     torneosCreados: [],
-    configuracion: {
-      notificaciones: true,
-      modoOscuro: false,
-      idioma: 'es' as const
-    },
-    estadisticas: {
-      torneosGanados: 5,
-      partidosJugados: 50,
-      golesAnotados: 25
-    },
-    fechaRegistro: '2024-01-01T00:00:00.000Z',
-    ultimaActividad: new Date().toISOString()
-  }
-};
-
-// Inicializar usuario maestro
-mockUsers.set(MASTER_USER.email, { 
-  password: MASTER_USER.password, 
-  uid: MASTER_USER.uid 
-});
-mockUserData.set(`users/${MASTER_USER.uid}`, MASTER_USER.userData);
-
-// Usuario de prueba adicional
-const TEST_USER = {
-  email: 'test@futbolapp.com',
-  password: 'test123',
-  uid: 'test-user-uid',
-  userData: {
-    id: 'test-user-uid',
-    nombre: 'Usuario',
-    apellidos: 'Prueba',
-    email: 'test@futbolapp.com',
-    telefono: '+34 600 111 222',
-    fechaNacimiento: '1995-05-15',
-    rol: 'espectador' as const,
-    ciudad: 'Barcelona',
-    torneosSubscritos: [],
     configuracion: {
       notificaciones: true,
       modoOscuro: false,
@@ -80,75 +41,18 @@ const TEST_USER = {
       partidosJugados: 0,
       golesAnotados: 0
     },
-    fechaRegistro: '2024-01-15T00:00:00.000Z',
+    fechaRegistro: '2024-01-01T00:00:00.000Z',
     ultimaActividad: new Date().toISOString()
   }
 };
 
-// Inicializar usuario de prueba
-mockUsers.set(TEST_USER.email, { 
-  password: TEST_USER.password, 
-  uid: TEST_USER.uid 
-});
-mockUserData.set(`users/${TEST_USER.uid}`, TEST_USER.userData);
+// Los usuarios de prueba se crean dinámicamente sin credenciales hardcodeadas
 
-// Crear usuario de prueba en AsyncStorage para acceso inmediato
-const createTestUser = async () => {
-  try {
-    const testUser = {
-      id: 'master-admin-uid',
-      nombre: 'Admin',
-      apellidos: 'Master',
-      email: 'admin@futbolapp.com',
-      telefono: '+34 600 000 000',
-      fechaNacimiento: '1990-01-01',
-      rol: 'entrenador' as const,
-      ciudad: 'Madrid',
-      torneosSubscritos: [],
-      equiposCreados: [],
-      torneosCreados: [],
-      configuracion: {
-        notificaciones: true,
-        modoOscuro: false,
-        idioma: 'es' as const
-      },
-      estadisticas: {
-        torneosGanados: 5,
-        partidosJugados: 50,
-        golesAnotados: 25
-      },
-      fechaRegistro: '2024-01-01T00:00:00.000Z',
-      ultimaActividad: new Date().toISOString()
-    };
-    
-    // Solo crear si no existe
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    const existingUser = await AsyncStorage.getItem('currentUser');
-    if (!existingUser) {
-      await AsyncStorage.setItem('currentUser', JSON.stringify(testUser));
-      console.log('✅ Usuario de prueba creado en AsyncStorage');
-    }
-  } catch (error) {
-    console.log('ℹ️ No se pudo crear usuario de prueba:', error);
-  }
-};
+// Plantilla para usuarios de desarrollo (sin credenciales)
 
-// Crear usuario de prueba con delay para evitar problemas de inicialización
-setTimeout(() => {
-  createTestUser();
-}, 1000);
+// Usuarios se registran dinámicamente por seguridad
 
-console.log('👑 Usuario maestro creado:');
-console.log('📧 Email: admin@futbolapp.com');
-console.log('🔐 Password: admin123');
-console.log('👤 Rol: entrenador (puede crear equipos y torneos)');
-console.log('');
-console.log('🧪 Usuario de prueba creado:');
-console.log('📧 Email: test@futbolapp.com');
-console.log('🔐 Password: test123');
-console.log('👤 Rol: espectador (puede suscribirse a torneos)');
-
-// Mock Firebase Auth
+// Mock Firebase Auth (sin credenciales hardcodeadas)
 const mockAuth = {
   currentUser: currentUser as MockUser | null,
   app: {
@@ -160,44 +64,44 @@ const mockAuth = {
 
 // Mock Firebase functions
 export const createUserWithEmailAndPassword = async (auth: any, email: string, password: string): Promise<MockUserCredential> => {
-  console.log('🔥 Mock createUserWithEmailAndPassword:', email);
-  
+  // User registration attempt (email not logged for security)
+
   if (mockUsers.has(email)) {
     throw { code: 'auth/email-already-in-use', message: 'Email already in use' };
   }
-  
+
   const uid = `mock-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const user: MockUser = { uid, email };
-  
+
   mockUsers.set(email, { password, uid });
   currentUser = user;
   (mockAuth as any).currentUser = user;
-  
+
   // Notify auth state listeners
   authStateListeners.forEach(listener => listener(user));
-  
+
   return { user };
 };
 
 export const signInWithEmailAndPassword = async (auth: any, email: string, password: string): Promise<MockUserCredential> => {
-  console.log('🔥 Mock signInWithEmailAndPassword:', email);
-  
+  // Login attempt (email not logged for security)
+
   const userData = mockUsers.get(email);
   if (!userData) {
     throw { code: 'auth/user-not-found', message: 'User not found' };
   }
-  
+
   if (userData.password !== password) {
     throw { code: 'auth/wrong-password', message: 'Wrong password' };
   }
-  
+
   const user: MockUser = { uid: userData.uid, email };
   currentUser = user;
   (mockAuth as any).currentUser = user;
-  
+
   // Notify auth state listeners
   authStateListeners.forEach(listener => listener(user));
-  
+
   return { user };
 };
 
@@ -205,7 +109,7 @@ export const signOut = async (auth: any): Promise<void> => {
   console.log('🔥 Mock signOut');
   currentUser = null;
   (mockAuth as any).currentUser = null;
-  
+
   // Notify auth state listeners
   authStateListeners.forEach(listener => listener(null));
 };
@@ -213,10 +117,10 @@ export const signOut = async (auth: any): Promise<void> => {
 export const onAuthStateChanged = (auth: any, callback: (user: MockUser | null) => void) => {
   console.log('🔥 Mock onAuthStateChanged');
   authStateListeners.push(callback);
-  
+
   // Call immediately with current state
   setTimeout(() => callback(currentUser), 0);
-  
+
   // Return unsubscribe function
   return () => {
     const index = authStateListeners.indexOf(callback);
@@ -227,14 +131,13 @@ export const onAuthStateChanged = (auth: any, callback: (user: MockUser | null) 
 };
 
 export const sendPasswordResetEmail = async (auth: any, email: string): Promise<void> => {
-  console.log('🔥 Mock sendPasswordResetEmail:', email);
-  
+  // Password reset request (email not logged for security)
+
   if (!mockUsers.has(email)) {
     throw { code: 'auth/user-not-found', message: 'User not found' };
   }
-  
-  // Simulate email sent
-  console.log('📧 Password reset email sent to:', email);
+
+  // Password reset email sent (details not logged for security)
 };
 
 // Mock Firestore
@@ -250,7 +153,7 @@ export const setDoc = async (docRef: any, data: any): Promise<void> => {
 export const getDoc = async (docRef: any) => {
   console.log('🔥 Mock getDoc:', docRef.collection, docRef.id);
   const data = mockUserData.get(`${docRef.collection}/${docRef.id}`);
-  
+
   return {
     exists: () => !!data,
     data: () => data

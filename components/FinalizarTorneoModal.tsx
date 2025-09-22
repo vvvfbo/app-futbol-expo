@@ -1,17 +1,17 @@
+import Colors from '@/constants/colors';
+import { Clasificacion, Equipo } from '@/types';
+import { Award, Check, Medal, Trophy, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
+  Alert,
   Image,
-  Alert
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Trophy, Medal, Award, X, Check } from 'lucide-react-native';
-import Colors from '@/constants/colors';
-import { Equipo, Clasificacion } from '@/types';
 
 interface FinalizarTorneoModalProps {
   visible: boolean;
@@ -47,8 +47,8 @@ export default function FinalizarTorneoModal({
       return;
     }
 
-    if (campeonId === subcampeonId || campeonId === tercerPuestoId || 
-        (subcampeonId && subcampeonId === tercerPuestoId)) {
+    if (campeonId === subcampeonId || campeonId === tercerPuestoId ||
+      (subcampeonId && subcampeonId === tercerPuestoId)) {
       Alert.alert('Error', 'No puedes seleccionar el mismo equipo para múltiples posiciones');
       return;
     }
@@ -87,7 +87,7 @@ export default function FinalizarTorneoModal({
         <View style={styles.iconContainer}>{icon}</View>
         <Text style={styles.selectorTitle}>{title}</Text>
       </View>
-      
+
       <ScrollView style={styles.equiposList} nestedScrollEnabled>
         {equipos.map(equipo => {
           const clasificacionEquipo = clasificacion.find(c => c.equipoId === equipo.id);
@@ -132,6 +132,7 @@ export default function FinalizarTorneoModal({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      transparent={false}
       onRequestClose={onClose}
     >
       <View style={styles.container}>
@@ -140,8 +141,8 @@ export default function FinalizarTorneoModal({
             <X size={24} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>Finalizar Torneo</Text>
-          <TouchableOpacity 
-            style={[styles.confirmButton, !campeonId && styles.confirmButtonDisabled]} 
+          <TouchableOpacity
+            style={[styles.confirmButton, !campeonId && styles.confirmButtonDisabled]}
             onPress={handleConfirm}
             disabled={!campeonId}
           >

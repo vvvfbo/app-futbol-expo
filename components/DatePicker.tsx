@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import Colors from '@/constants/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Calendar, Clock } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+import React, { useState } from 'react';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 interface TimePickerProps {
   value: string; // formato HH:MM
@@ -42,24 +44,24 @@ export function TimePicker({
 
   const handleTimeChange = (event: any, time?: Date) => {
     console.log('🕐 TimePicker - handleTimeChange:', { event: event?.type, time });
-    
+
     if (Platform.OS === 'android') {
       setShowPicker(false);
     }
-    
+
     if (event?.type === 'dismissed') {
       console.log('🕐 TimePicker - Usuario canceló');
       setShowPicker(false);
       return;
     }
-    
+
     if (time && event?.type !== 'dismissed') {
       console.log('🕐 TimePicker - Nueva hora seleccionada:', time);
       setSelectedTime(time);
       const formattedTime = formatTimeToHHMM(time);
       console.log('🕐 TimePicker - Hora formateada:', formattedTime);
       onTimeChange(formattedTime);
-      
+
       if (Platform.OS === 'android') {
         setShowPicker(false);
       }
@@ -84,7 +86,7 @@ export function TimePicker({
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
-      
+
       <TouchableOpacity style={styles.dateButton} onPress={handlePress}>
         <Clock size={20} color={Colors.textLight} />
         <Text style={[
@@ -95,41 +97,42 @@ export function TimePicker({
         </Text>
       </TouchableOpacity>
 
-      {showPicker && (
-        <>
-          {Platform.OS === 'web' ? (
-            <View style={styles.webPickerContainer}>
-              <input
-                type="time"
-                value={selectedTime.toTimeString().slice(0, 5)}
-                onChange={(e) => {
-                  console.log('🕐 TimePicker Web - Hora seleccionada:', e.target.value);
-                  if (e.target.value) {
-                    const [hours, minutes] = e.target.value.split(':');
-                    const newTime = new Date();
-                    newTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-                    setSelectedTime(newTime);
-                    const formattedTime = formatTimeToHHMM(newTime);
-                    console.log('🕐 TimePicker Web - Hora formateada:', formattedTime);
-                    onTimeChange(formattedTime);
-                    setShowPicker(false);
-                  }
-                }}
-                style={styles.webDateInput}
-                autoFocus
-              />
-              <TouchableOpacity 
-                style={styles.webCloseButton} 
-                onPress={() => {
-                  console.log('🕐 TimePicker Web - Cerrando');
-                  setShowPicker(false);
-                }}
-              >
-                <Text style={styles.webCloseButtonText}>Cerrar</Text>
-              </TouchableOpacity>
+      <Modal
+        visible={showPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowPicker(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPicker(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={() => { }}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {Platform.OS === 'web' ? 'Seleccionar Hora' : 'Confirma la hora'}
+              </Text>
             </View>
-          ) : (
-            <>
+
+            {Platform.OS === 'web' ? (
+              <View style={styles.webInputContainer}>
+                <input
+                  type="time"
+                  value={selectedTime.toTimeString().slice(0, 5)}
+                  onChange={(e) => {
+                    console.log('🕐 TimePicker Web - Hora seleccionada:', e.target.value);
+                    if (e.target.value) {
+                      const [hours, minutes] = e.target.value.split(':');
+                      const newTime = new Date();
+                      newTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                      setSelectedTime(newTime);
+                    }
+                  }}
+                  style={styles.webDateInput}
+                  autoFocus
+                />
+              </View>
+            ) : (
               <DateTimePicker
                 value={selectedTime}
                 mode="time"
@@ -139,21 +142,26 @@ export function TimePicker({
                 textColor={Colors.text}
                 accentColor={Colors.primary}
               />
-              
-              {Platform.OS === 'ios' && (
-                <View style={styles.iosButtons}>
-                  <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-                    <Text style={styles.cancelButtonText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-                    <Text style={styles.confirmButtonText}>Confirmar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </>
-          )}
-        </>
-      )}
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={() => {
+                  const formattedTime = formatTimeToHHMM(selectedTime);
+                  onTimeChange(formattedTime);
+                  setShowPicker(false);
+                }}
+              >
+                <Text style={styles.confirmButtonText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -192,19 +200,19 @@ export default function DatePicker({
 
   const handleDateChange = (event: any, date?: Date) => {
     console.log('📅 DatePicker - handleDateChange:', { event: event?.type, date });
-    
+
     // En Android, siempre cerramos el picker después de seleccionar
     if (Platform.OS === 'android') {
       setShowPicker(false);
     }
-    
+
     // Si el usuario canceló, cerramos sin cambios
     if (event?.type === 'dismissed') {
       console.log('📅 DatePicker - Usuario canceló');
       setShowPicker(false);
       return;
     }
-    
+
     // Si hay una fecha válida, la procesamos
     if (date && event?.type !== 'dismissed') {
       console.log('📅 DatePicker - Nueva fecha seleccionada:', date);
@@ -212,7 +220,7 @@ export default function DatePicker({
       const formattedDate = formatDateToDDMMYYYY(date);
       console.log('📅 DatePicker - Fecha formateada:', formattedDate);
       onDateChange(formattedDate);
-      
+
       // En Android cerramos inmediatamente, en iOS esperamos confirmación
       if (Platform.OS === 'android') {
         setShowPicker(false);
@@ -238,7 +246,7 @@ export default function DatePicker({
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
-      
+
       <TouchableOpacity style={styles.dateButton} onPress={handlePress}>
         <Calendar size={20} color={Colors.textLight} />
         <Text style={[
@@ -249,42 +257,41 @@ export default function DatePicker({
         </Text>
       </TouchableOpacity>
 
-      {showPicker && (
-        <>
-          {Platform.OS === 'web' ? (
-            // Para web, mostrar un input de tipo date
-            <View style={styles.webPickerContainer}>
-              <input
-                type="date"
-                value={selectedDate.toISOString().split('T')[0]}
-                onChange={(e) => {
-                  console.log('📅 DatePicker Web - Fecha seleccionada:', e.target.value);
-                  if (e.target.value) {
-                    const newDate = new Date(e.target.value + 'T00:00:00');
-                    setSelectedDate(newDate);
-                    const formattedDate = formatDateToDDMMYYYY(newDate);
-                    console.log('📅 DatePicker Web - Fecha formateada:', formattedDate);
-                    onDateChange(formattedDate);
-                    setShowPicker(false);
-                  }
-                }}
-                min={minimumDate?.toISOString().split('T')[0]}
-                style={styles.webDateInput}
-                autoFocus
-              />
-              <TouchableOpacity 
-                style={styles.webCloseButton} 
-                onPress={() => {
-                  console.log('📅 DatePicker Web - Cerrando');
-                  setShowPicker(false);
-                }}
-              >
-                <Text style={styles.webCloseButtonText}>Cerrar</Text>
-              </TouchableOpacity>
+      <Modal
+        visible={showPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowPicker(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPicker(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={() => { }}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {Platform.OS === 'web' ? 'Seleccionar Fecha' : 'Confirma la fecha'}
+              </Text>
             </View>
-          ) : (
-            // Para móvil, usar DateTimePicker nativo
-            <>
+
+            {Platform.OS === 'web' ? (
+              <View style={styles.webInputContainer}>
+                <input
+                  type="date"
+                  value={selectedDate.toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    console.log('📅 DatePicker Web - Fecha seleccionada:', e.target.value);
+                    if (e.target.value) {
+                      const newDate = new Date(e.target.value + 'T00:00:00');
+                      setSelectedDate(newDate);
+                    }
+                  }}
+                  min={minimumDate?.toISOString().split('T')[0]}
+                  style={styles.webDateInput}
+                  autoFocus
+                />
+              </View>
+            ) : (
               <DateTimePicker
                 value={selectedDate}
                 mode="date"
@@ -295,21 +302,26 @@ export default function DatePicker({
                 textColor={Colors.text}
                 accentColor={Colors.primary}
               />
-              
-              {Platform.OS === 'ios' && (
-                <View style={styles.iosButtons}>
-                  <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-                    <Text style={styles.cancelButtonText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-                    <Text style={styles.confirmButtonText}>Confirmar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </>
-          )}
-        </>
-      )}
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={() => {
+                  const formattedDate = formatDateToDDMMYYYY(selectedDate);
+                  onDateChange(formattedDate);
+                  setShowPicker(false);
+                }}
+              >
+                <Text style={styles.confirmButtonText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -317,7 +329,6 @@ export default function DatePicker({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
-    position: 'relative',
   },
   label: {
     fontSize: 16,
@@ -345,51 +356,74 @@ const styles = StyleSheet.create({
   placeholder: {
     color: Colors.textLight,
   },
-  webPickerContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    marginTop: 4,
+  // Nuevos estilos para Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
     backgroundColor: Colors.surface,
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 10,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 20,
   },
-  iosButtons: {
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  webInputContainer: {
+    marginVertical: 20,
+  },
+  modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: Colors.surface,
+    marginTop: 20,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
   cancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     backgroundColor: Colors.border,
-    borderRadius: 6,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
   },
   cancelButtonText: {
     color: Colors.text,
     fontSize: 16,
+    fontWeight: '500',
   },
   confirmButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     backgroundColor: Colors.primary,
-    borderRadius: 6,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
   },
   confirmButtonText: {
     color: '#FFFFFF',
@@ -397,7 +431,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   webDateInput: {
-    padding: 12,
+    padding: 16,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.primary,
@@ -405,20 +439,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 16,
     width: '100%',
-    marginBottom: 8,
     fontFamily: Platform.OS === 'web' ? 'system-ui' : undefined,
     outline: 'none',
-  },
-  webCloseButton: {
-    backgroundColor: Colors.textLight,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignSelf: 'flex-end',
-  },
-  webCloseButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
   },
 });

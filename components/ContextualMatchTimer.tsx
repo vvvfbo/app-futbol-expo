@@ -32,7 +32,7 @@ export default function ContextualMatchTimer({
   const [equipoEvento, setEquipoEvento] = useState<'local' | 'visitante'>('local');
   const [descripcionEvento, setDescripcionEvento] = useState('');
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | number | null>(null);
   const duracionPartido = torneo.configuracion.tiempoPartido * 60; // convertir a segundos
 
   // Verificar si es hora de empezar el partido

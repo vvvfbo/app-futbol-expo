@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { router } from 'expo-router';
-import { ArrowLeft, Building2, MapPin, Save } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LocationPicker from '@/components/LocationPicker';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-context';
 import { useData } from '@/hooks/data-context';
-import { Club, Categoria } from '@/types';
-import LocationPicker from '@/components/LocationPicker';
+import { Categoria, Club } from '@/types';
+import { router } from 'expo-router';
+import { ArrowLeft, MapPin, Save } from 'lucide-react-native';
+import React, { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CATEGORIAS_DISPONIBLES: Categoria[] = ['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'];
 
@@ -25,7 +25,7 @@ export default function CrearClubScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { crearClub } = useData();
-  
+
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -35,7 +35,7 @@ export default function CrearClubScreen() {
     ciudad: '',
     coordenadas: undefined as { latitud: number; longitud: number } | undefined,
   });
-  
+
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState<Set<Categoria>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -62,7 +62,7 @@ export default function CrearClubScreen() {
     setShowLocationPicker(false);
   };
 
-  const handleSubmit = async () => {
+  const handleCrear = async () => {
     if (!formData.nombre.trim()) {
       Alert.alert('Error', 'El nombre del club es obligatorio');
       return;
@@ -109,7 +109,7 @@ export default function CrearClubScreen() {
       };
 
       await crearClub(nuevoClub);
-      
+
       Alert.alert(
         'Éxito',
         'Club creado exitosamente',
@@ -141,7 +141,7 @@ export default function CrearClubScreen() {
           <View style={styles.form}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Información Básica</Text>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Nombre del Club *</Text>
                 <TextInput
@@ -169,7 +169,7 @@ export default function CrearClubScreen() {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Contacto</Text>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Teléfono</Text>
                 <TextInput
@@ -198,7 +198,7 @@ export default function CrearClubScreen() {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Ubicación</Text>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Ciudad *</Text>
                 <TextInput
@@ -235,20 +235,20 @@ export default function CrearClubScreen() {
               <Text style={styles.sectionSubtitle}>
                 Selecciona las categorías que tendrá tu club
               </Text>
-              
-              <View style={styles.categoriesGrid}>
+
+              <View style={styles.optionsContainer}>
                 {CATEGORIAS_DISPONIBLES.map((categoria) => (
                   <TouchableOpacity
                     key={categoria}
                     style={[
-                      styles.categoryButton,
-                      categoriasSeleccionadas.has(categoria) && styles.categoryButtonSelected
+                      styles.optionChip,
+                      categoriasSeleccionadas.has(categoria) && styles.optionChipActive
                     ]}
                     onPress={() => toggleCategoria(categoria)}
                   >
                     <Text style={[
-                      styles.categoryButtonText,
-                      categoriasSeleccionadas.has(categoria) && styles.categoryButtonTextSelected
+                      styles.optionChipText,
+                      categoriasSeleccionadas.has(categoria) && styles.optionChipTextActive
                     ]}>
                       {categoria}
                     </Text>
@@ -261,12 +261,12 @@ export default function CrearClubScreen() {
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
+            style={[styles.createButton, isLoading && styles.createButtonDisabled]}
+            onPress={handleCrear}
             disabled={isLoading}
           >
             <Save size={20} color="#FFFFFF" />
-            <Text style={styles.submitButtonText}>
+            <Text style={styles.createButtonText}>
               {isLoading ? 'Creando...' : 'Crear Club'}
             </Text>
           </TouchableOpacity>
@@ -374,12 +374,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  categoriesGrid: {
+  optionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  categoryButton: {
+  optionChip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -387,16 +387,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  categoryButtonSelected: {
+  optionChipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  categoryButtonText: {
+  optionChipText: {
     fontSize: 14,
     color: Colors.text,
     fontWeight: '500',
   },
-  categoryButtonTextSelected: {
+  optionChipTextActive: {
     color: '#FFFFFF',
   },
   footer: {
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  submitButton: {
+  createButton: {
     backgroundColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
@@ -414,10 +414,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  submitButtonDisabled: {
+  createButtonDisabled: {
     backgroundColor: Colors.textLight,
   },
-  submitButtonText: {
+  createButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

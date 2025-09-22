@@ -1,11 +1,26 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { Trophy, Search, MapPin, Bell, BellOff } from 'lucide-react-native';
-import { useData } from '@/hooks/data-context';
-import { useAuth } from '@/hooks/auth-context';
+import LocationPicker from '@/components/LocationPicker';
+import { CATEGORIAS, CIUDADES } from '@/constants/categories';
 import Colors from '@/constants/colors';
+import { useAuth } from '@/hooks/auth-context';
+import { useData } from '@/hooks/data-context';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { CIUDADES, CATEGORIAS } from '@/constants/categories';
+import { Bell, BellOff, MapPin, Navigation, Search, Sliders, Trophy } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+// Función para calcular distancia entre dos puntos (Haversine)
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Radio de la Tierra en km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distancia en km
+};
 
 export default function TorneosScreen() {
   const { torneos } = useData();
@@ -14,6 +29,52 @@ export default function TorneosScreen() {
   const [selectedCiudad, setSelectedCiudad] = useState<string>('');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('');
   const [showAllTournaments, setShowAllTournaments] = useState(false);
+
+  // Estados para búsqueda avanzada
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [searchRadius, setSearchRadius] = useState<number>(10); // km por defecto
+  const [useLocationFilter, setUseLocationFilter] = useState(false);
+  const [ciudadPersonalizada, setCiudadPersonalizada] = useState('');
+  const [usandoCiudadPersonalizada, setUsandoCiudadPersonalizada] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+  // Efecto para obtener ubicación del usuario
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS === 'web') {
+        // En web usar geolocation API
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              setUserLocation({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              });
+            },
+            (error) => console.log('Error obteniendo ubicación:', error),
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+          );
+        }
+      } else {
+        // En mobile usar expo-location
+        try {
+          let { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            let location = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced
+            });
+            setUserLocation({
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude
+            });
+          }
+        } catch (error) {
+          console.log('Error obteniendo ubicación:', error);
+        }
+      }
+    })();
+  }, []);
 
   // Filtrar torneos según el rol del usuario
   const getVisibleTorneos = () => {
@@ -35,16 +96,37 @@ export default function TorneosScreen() {
 
   const filteredTorneos = getVisibleTorneos().filter(torneo => {
     const matchesSearch = torneo.nombre.toLowerCase().includes(searchText.toLowerCase());
-    const matchesCiudad = !selectedCiudad || torneo.ciudad === selectedCiudad;
+
+    // Filtro por ciudad (predefinida o personalizada)
+    let matchesCiudad = true;
+    if (usandoCiudadPersonalizada && ciudadPersonalizada) {
+      matchesCiudad = torneo.ciudad.toLowerCase().includes(ciudadPersonalizada.toLowerCase());
+    } else if (selectedCiudad) {
+      matchesCiudad = torneo.ciudad === selectedCiudad;
+    }
+
     const matchesCategoria = !selectedCategoria || torneo.categoria === selectedCategoria;
-    return matchesSearch && matchesCiudad && matchesCategoria;
+
+    // Filtro por distancia
+    let matchesLocation = true;
+    if (useLocationFilter && userLocation && torneo.ubicacion?.coordenadas) {
+      const distance = calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        torneo.ubicacion.coordenadas.latitud,
+        torneo.ubicacion.coordenadas.longitud
+      );
+      matchesLocation = distance <= searchRadius;
+    }
+
+    return matchesSearch && matchesCiudad && matchesCategoria && matchesLocation;
   });
 
   const handleSuscripcion = async (torneoId: string) => {
     if (!user || user.rol !== 'espectador') return;
-    
+
     const isSubscribed = user.torneosSubscritos?.includes(torneoId) || false;
-    
+
     try {
       if (isSubscribed) {
         await desuscribirseATorneo(torneoId);
@@ -75,53 +157,144 @@ export default function TorneosScreen() {
             onChangeText={setSearchText}
           />
         </View>
+        <TouchableOpacity
+          style={[styles.advancedFilterButton, showAdvancedFilters && styles.advancedFilterButtonActive]}
+          onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
+        >
+          <Sliders size={20} color={showAdvancedFilters ? 'white' : Colors.primary} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
-        <TouchableOpacity
-          style={[styles.filterChip, !selectedCiudad && styles.filterChipActive]}
-          onPress={() => setSelectedCiudad('')}
-        >
-          <Text style={[styles.filterChipText, !selectedCiudad && styles.filterChipTextActive]}>
-            Todas las ciudades
-          </Text>
-        </TouchableOpacity>
-        {CIUDADES.map(ciudad => (
-          <TouchableOpacity
-            key={ciudad}
-            style={[styles.filterChip, selectedCiudad === ciudad && styles.filterChipActive]}
-            onPress={() => setSelectedCiudad(ciudad)}
-          >
-            <MapPin size={14} color={selectedCiudad === ciudad ? 'white' : Colors.textLight} />
-            <Text style={[styles.filterChipText, selectedCiudad === ciudad && styles.filterChipTextActive]}>
-              {ciudad}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {showAdvancedFilters && (
+        <View style={styles.advancedFiltersContainer}>
+          {/* Filtro por Ubicación */}
+          {userLocation && (
+            <View style={styles.locationFilterContainer}>
+              <View style={styles.filterHeader}>
+                <TouchableOpacity
+                  style={[styles.locationToggle, useLocationFilter && styles.locationToggleActive]}
+                  onPress={() => setUseLocationFilter(!useLocationFilter)}
+                >
+                  <Navigation size={16} color={useLocationFilter ? 'white' : Colors.primary} />
+                  <Text style={[styles.locationToggleText, useLocationFilter && styles.locationToggleTextActive]}>
+                    Cerca de mí
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
-        <TouchableOpacity
-          style={[styles.filterChip, !selectedCategoria && styles.filterChipActive]}
-          onPress={() => setSelectedCategoria('')}
-        >
-          <Text style={[styles.filterChipText, !selectedCategoria && styles.filterChipTextActive]}>
-            Todas las categorías
-          </Text>
-        </TouchableOpacity>
-        {CATEGORIAS.map(categoria => (
-          <TouchableOpacity
-            key={categoria}
-            style={[styles.filterChip, selectedCategoria === categoria && styles.filterChipActive]}
-            onPress={() => setSelectedCategoria(categoria)}
-          >
-            <Trophy size={14} color={selectedCategoria === categoria ? 'white' : Colors.textLight} />
-            <Text style={[styles.filterChipText, selectedCategoria === categoria && styles.filterChipTextActive]}>
-              {categoria}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              {useLocationFilter && (
+                <View style={styles.radiusContainer}>
+                  <Text style={styles.radiusLabel}>Radio: {searchRadius} km</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.radiusOptions}>
+                    {[5, 10, 20, 50].map(radius => (
+                      <TouchableOpacity
+                        key={radius}
+                        style={[styles.radiusChip, searchRadius === radius && styles.radiusChipActive]}
+                        onPress={() => setSearchRadius(radius)}
+                      >
+                        <Text style={[styles.radiusChipText, searchRadius === radius && styles.radiusChipTextActive]}>
+                          {radius} km
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Filtro por Ciudad */}
+          <View style={styles.cityFilterContainer}>
+            <Text style={styles.filterSectionTitle}>Ciudad</Text>
+
+            {/* Ciudades Predefinidas */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
+              <TouchableOpacity
+                style={[styles.filterChip, !selectedCiudad && !usandoCiudadPersonalizada && styles.filterChipActive]}
+                onPress={() => {
+                  setSelectedCiudad('');
+                  setUsandoCiudadPersonalizada(false);
+                  setCiudadPersonalizada('');
+                }}
+              >
+                <Text style={[styles.filterChipText, !selectedCiudad && !usandoCiudadPersonalizada && styles.filterChipTextActive]}>
+                  Todas
+                </Text>
+              </TouchableOpacity>
+              {CIUDADES.map(ciudad => (
+                <TouchableOpacity
+                  key={ciudad}
+                  style={[styles.filterChip, !usandoCiudadPersonalizada && selectedCiudad === ciudad && styles.filterChipActive]}
+                  onPress={() => {
+                    setSelectedCiudad(ciudad);
+                    setUsandoCiudadPersonalizada(false);
+                    setCiudadPersonalizada('');
+                  }}
+                >
+                  <MapPin size={14} color={!usandoCiudadPersonalizada && selectedCiudad === ciudad ? 'white' : Colors.textLight} />
+                  <Text style={[styles.filterChipText, !usandoCiudadPersonalizada && selectedCiudad === ciudad && styles.filterChipTextActive]}>
+                    {ciudad}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Ciudad Personalizada */}
+            <View style={styles.customCityContainer}>
+              <View style={styles.customCityInputContainer}>
+                <TextInput
+                  style={[styles.customCityInput, usandoCiudadPersonalizada && styles.customCityInputActive]}
+                  placeholder="Buscar otra ciudad..."
+                  placeholderTextColor={Colors.textLight}
+                  value={ciudadPersonalizada}
+                  onChangeText={(text) => {
+                    setCiudadPersonalizada(text);
+                    if (text.length > 0) {
+                      setUsandoCiudadPersonalizada(true);
+                      setSelectedCiudad('');
+                    } else {
+                      setUsandoCiudadPersonalizada(false);
+                    }
+                  }}
+                />
+                <TouchableOpacity
+                  style={styles.locationPickerButton}
+                  onPress={() => setShowLocationPicker(true)}
+                >
+                  <MapPin size={16} color={Colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Filtro por Categoría */}
+          <View style={styles.categoryFilterContainer}>
+            <Text style={styles.filterSectionTitle}>Categoría</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
+              <TouchableOpacity
+                style={[styles.filterChip, !selectedCategoria && styles.filterChipActive]}
+                onPress={() => setSelectedCategoria('')}
+              >
+                <Text style={[styles.filterChipText, !selectedCategoria && styles.filterChipTextActive]}>
+                  Todas
+                </Text>
+              </TouchableOpacity>
+              {CATEGORIAS.map(categoria => (
+                <TouchableOpacity
+                  key={categoria}
+                  style={[styles.filterChip, selectedCategoria === categoria && styles.filterChipActive]}
+                  onPress={() => setSelectedCategoria(categoria)}
+                >
+                  <Trophy size={14} color={selectedCategoria === categoria ? 'white' : Colors.textLight} />
+                  <Text style={[styles.filterChipText, selectedCategoria === categoria && styles.filterChipTextActive]}>
+                    {categoria}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
 
       {user?.rol === 'espectador' && (
         <View style={styles.toggleContainer}>
@@ -172,7 +345,7 @@ export default function TorneosScreen() {
                   {torneo.equiposIds.length} equipos participantes
                 </Text>
               </TouchableOpacity>
-              
+
               {user?.rol === 'espectador' && (
                 <TouchableOpacity
                   style={[styles.subscribeButton, isSubscribed(torneo.id) && styles.subscribeButtonActive]}
@@ -191,20 +364,35 @@ export default function TorneosScreen() {
           <View style={styles.emptyContainer}>
             <Trophy size={48} color={Colors.textLight} />
             <Text style={styles.emptyText}>
-              {user?.rol === 'espectador' && !showAllTournaments 
-                ? 'No tienes torneos suscritos' 
+              {user?.rol === 'espectador' && !showAllTournaments
+                ? 'No tienes torneos suscritos'
                 : 'No se encontraron torneos'
               }
             </Text>
             <Text style={styles.emptySubtext}>
-              {user?.rol === 'espectador' && !showAllTournaments 
-                ? 'Ve a "Explorar" para suscribirte a torneos' 
+              {user?.rol === 'espectador' && !showAllTournaments
+                ? 'Ve a "Explorar" para suscribirte a torneos'
                 : 'Prueba ajustando los filtros de búsqueda'
               }
             </Text>
           </View>
         )}
       </ScrollView>
+
+      {showLocationPicker && (
+        <LocationPicker
+          onLocationSelect={(locationData) => {
+            if (locationData.address) {
+              const ciudad = locationData.address.split(',')[0].trim();
+              setCiudadPersonalizada(ciudad);
+              setUsandoCiudadPersonalizada(true);
+              setSelectedCiudad('');
+            }
+            setShowLocationPicker(false);
+          }}
+          onClose={() => setShowLocationPicker(false)}
+        />
+      )}
     </View>
   );
 }
@@ -370,5 +558,127 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     marginTop: 8,
     textAlign: 'center',
+  },
+  // Estilos para búsqueda avanzada
+  advancedFilterButton: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 12,
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  advancedFilterButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  advancedFiltersContainer: {
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    padding: 16,
+  },
+  locationFilterContainer: {
+    marginBottom: 16,
+  },
+  filterHeader: {
+    marginBottom: 8,
+  },
+  locationToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  locationToggleActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  locationToggleText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  locationToggleTextActive: {
+    color: 'white',
+  },
+  radiusContainer: {
+    marginTop: 12,
+  },
+  radiusLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  radiusOptions: {
+    maxHeight: 40,
+  },
+  radiusChip: {
+    backgroundColor: Colors.background,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  radiusChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  radiusChipText: {
+    fontSize: 12,
+    color: Colors.textLight,
+  },
+  radiusChipTextActive: {
+    color: 'white',
+  },
+  cityFilterContainer: {
+    marginBottom: 16,
+  },
+  filterSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  customCityContainer: {
+    marginTop: 8,
+  },
+  customCityInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  customCityInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  customCityInputActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '05',
+  },
+  locationPickerButton: {
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  categoryFilterContainer: {
+    marginBottom: 8,
   },
 });
