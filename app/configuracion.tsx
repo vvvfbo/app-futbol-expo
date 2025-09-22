@@ -5,7 +5,7 @@ import { useData } from '@/hooks/data-context';
 import { useTheme } from '@/hooks/theme-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, Bug, Database, Globe, Moon, RefreshCw, Shield, Trash2, User } from 'lucide-react-native';
+import { ArrowLeft, Bell, Bug, Database, Globe, Moon, Plus, RefreshCw, Shield, Trash2, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ export default function ConfiguracionScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleChangeRole = () => {
     const newRole = user?.rol === 'entrenador' ? 'espectador' : 'entrenador';
@@ -251,6 +252,62 @@ export default function ConfiguracionScreen() {
     }
   };
 
+  const handleGenerateData = () => {
+    // Solo permitir a entrenadores generar datos
+    if (user?.rol !== 'entrenador') {
+      Alert.alert(
+        'Acceso Denegado',
+        'Solo los entrenadores pueden generar datos de prueba.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      '🎲 Generar Datos de Prueba',
+      'Esto creará equipos, clubes, torneos y partidos aleatorios para probar la aplicación.\n\n¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Generar',
+          onPress: async () => {
+            setIsGenerating(true);
+            try {
+              // Importar el generador de datos
+              const { DataGenerator } = await import('../utils/data-generator');
+              const generator = new DataGenerator();
+              
+              console.log('🎲 Generando datos de prueba...');
+              
+              // Generar dataset completo
+              const data = generator.generateCompleteDataset();
+              
+              console.log(`✅ Generados: ${data.clubes.length} clubes, ${data.equipos.length} equipos, ${data.torneos.length} torneos`);
+              
+              Alert.alert(
+                '🎉 Datos Generados',
+                `Se han creado:\n• ${data.clubes.length} clubes deportivos\n• ${data.equipos.length} equipos\n• ${data.torneos.length} torneos\n• ${data.partidos.length} partidos\n• ${data.amistosos.length} amistosos\n\n¡Ya puedes probar todas las funcionalidades!`,
+                [
+                  { text: 'Explorar', onPress: () => router.push('/(tabs)/(torneos)/') },
+                  { text: 'OK' }
+                ]
+              );
+              
+            } catch (error) {
+              console.error('❌ Error generating data:', error);
+              Alert.alert(
+                'Error',
+                'No se pudieron generar los datos de prueba. Verifica que el generador esté disponible.'
+              );
+            } finally {
+              setIsGenerating(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -442,6 +499,30 @@ export default function ConfiguracionScreen() {
             <View style={styles.settingCard}>
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
+                  <Plus size={20} color={Colors.success} />
+                  <View style={styles.settingText}>
+                    <Text style={styles.settingLabel}>Generar Datos de Prueba</Text>
+                    <Text style={styles.settingDescription}>
+                      Crear equipos, torneos y partidos aleatorios para probar la app
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.successButton, isGenerating && styles.changeButtonDisabled]}
+                  onPress={handleGenerateData}
+                  disabled={isGenerating}
+                >
+                  <Plus size={16} color={Colors.background} />
+                  <Text style={styles.successButtonText}>
+                    {isGenerating ? 'Generando...' : 'Generar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.settingCard}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
                   <Trash2 size={20} color={Colors.error} />
                   <View style={styles.settingText}>
                     <Text style={styles.settingLabel}>Limpiar Datos</Text>
@@ -579,6 +660,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.error,
+  },
+  successButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.success,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  successButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.background,
   },
   infoText: {
     fontSize: 14,

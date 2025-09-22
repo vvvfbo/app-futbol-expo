@@ -188,7 +188,28 @@ export default function CrearTorneoScreen() {
     const calendario = generarCalendario(equiposSeleccionados, torneoId);
     await crearPartidos(calendario);
 
-    router.back();
+    Alert.alert(
+      '🏆 Torneo Creado',
+      `"${nombre}" ha sido creado exitosamente con ${equiposSeleccionados.length} equipos.\n\n¡El calendario de partidos ya está listo!`,
+      [
+        {
+          text: 'Ver Torneo',
+          onPress: () => {
+            router.back();
+            router.push(`/(tabs)/(torneos)/${torneoId}`);
+          }
+        },
+        {
+          text: 'Crear Otro',
+          onPress: () => {
+            // Resetear formulario para crear otro torneo
+            setNombre('');
+            setEquiposSeleccionados([]);
+            setCampoSeleccionado('');
+          }
+        }
+      ]
+    );
   };
 
   const equiposFiltrados = equipos.filter(e => e.categoria === categoria && e.tipoFutbol === tipoFutbol);
