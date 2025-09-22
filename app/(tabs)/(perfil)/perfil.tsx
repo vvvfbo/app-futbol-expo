@@ -24,6 +24,16 @@ export default function PerfilScreen() {
 
   const totalUnreadChats = getTotalUnreadCount();
 
+  // Función de prueba súper simple
+  const pruebaSimpleConsole = () => {
+    console.log('🚨 PRUEBA SIMPLE CONSOLE - BOTÓN FUNCIONA!');
+    console.log('👤 Usuario:', user);
+    console.log('⚽ Equipos totales:', equipos.length);
+    console.log('🏆 Torneos totales:', torneos.length);
+    console.log('📝 Mis equipos:', misEquipos.length);
+    Alert.alert('✅ Prueba Console', 'Revisa la consola del navegador (F12)');
+  };
+
   const handleLogout = () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -220,6 +230,19 @@ export default function PerfilScreen() {
             <Database size={20} color="white" />
             <Text style={[styles.actionButtonText, { color: 'white' }]}>
               🧪 PRUEBA SIMPLE (Solo Club)
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Botón de prueba súper simple */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#FF6B6B' }]}
+            onPress={pruebaSimpleConsole}
+          >
+            <Database size={20} color="white" />
+            <Text style={[styles.actionButtonText, { color: 'white' }]}>
+              🚨 PRUEBA CONSOLE SIMPLE
             </Text>
           </TouchableOpacity>
         </View>
