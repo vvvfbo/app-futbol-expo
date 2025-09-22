@@ -1,24 +1,24 @@
-import { useState, useEffect } from 'react';
+import Colors from '@/constants/colors';
+import { useAuth } from '@/hooks/auth-context';
+import { LoginFormData, ValidationError } from '@/types';
+import { getFieldError, validateLoginForm } from '@/utils/validation';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { Eye, EyeOff, Lock, Mail, Trophy } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
-  ActivityIndicator
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Trophy, Lock, Mail, Eye, EyeOff } from 'lucide-react-native';
-import { router } from 'expo-router';
-import { useAuth } from '@/hooks/auth-context';
-import Colors from '@/constants/colors';
-import { LoginFormData, ValidationError } from '@/types';
-import { validateLoginForm, getFieldError } from '@/utils/validation';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -46,7 +46,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     const validationErrors = validateLoginForm(formData);
     setErrors(validationErrors);
-    
+
     if (validationErrors.length > 0) {
       Alert.alert('Error', 'Por favor corrige los errores en el formulario');
       return;
@@ -74,7 +74,7 @@ export default function LoginScreen() {
     try {
       await resetPassword(resetEmail);
       Alert.alert(
-        'Email enviado', 
+        'Email enviado',
         'Se ha enviado un enlace de recuperación a tu email',
         [{ text: 'OK', onPress: () => setShowForgotPassword(false) }]
       );
@@ -101,7 +101,7 @@ export default function LoginScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
@@ -112,12 +112,12 @@ export default function LoginScreen() {
               {__DEV__ && (
                 <View style={styles.debugContainer}>
                   <Text style={styles.debugTitle}>📝 Usuarios de Prueba:</Text>
-                  
+
                   <View style={styles.userTestContainer}>
                     <Text style={styles.debugText}>👑 Admin (Entrenador)</Text>
                     <Text style={styles.debugText}>📧 admin@futbolapp.com</Text>
                     <Text style={styles.debugText}>🔐 admin123</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.testButton}
                       onPress={() => {
                         updateFormData('email', 'admin@futbolapp.com');
@@ -126,15 +126,15 @@ export default function LoginScreen() {
                     >
                       <Text style={styles.testButtonText}>Completar Admin</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.testButton, { backgroundColor: Colors.primary }]}
                       onPress={async () => {
                         try {
                           setIsLoading(true);
-                          await login({ 
-                            email: 'admin@futbolapp.com', 
+                          await login({
+                            email: 'admin@futbolapp.com',
                             password: 'admin123',
-                            rememberMe: false 
+                            rememberMe: false
                           });
                         } catch (error) {
                           Alert.alert('Error', 'No se pudo hacer login automático');
@@ -146,12 +146,12 @@ export default function LoginScreen() {
                       <Text style={styles.testButtonText}>🚀 AUTO-LOGIN ADMIN</Text>
                     </TouchableOpacity>
                   </View>
-                  
+
                   <View style={styles.userTestContainer}>
                     <Text style={styles.debugText}>🧪 Usuario (Espectador)</Text>
                     <Text style={styles.debugText}>📧 test@futbolapp.com</Text>
                     <Text style={styles.debugText}>🔐 test123</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.testButton}
                       onPress={() => {
                         updateFormData('email', 'test@futbolapp.com');
@@ -160,15 +160,15 @@ export default function LoginScreen() {
                     >
                       <Text style={styles.testButtonText}>Completar Test</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.testButton, { backgroundColor: Colors.secondary }]}
                       onPress={async () => {
                         try {
                           setIsLoading(true);
-                          await login({ 
-                            email: 'test@futbolapp.com', 
+                          await login({
+                            email: 'test@futbolapp.com',
                             password: 'test123',
-                            rememberMe: false 
+                            rememberMe: false
                           });
                         } catch (error) {
                           Alert.alert('Error', 'No se pudo hacer login automático');
@@ -247,7 +247,7 @@ export default function LoginScreen() {
                 <Text style={styles.rememberMeText}>Recordarme</Text>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.loginButton}
                 onPress={handleLogin}
                 disabled={isLoading}
@@ -259,7 +259,7 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.forgotPasswordLink}
                 onPress={() => setShowForgotPassword(true)}
               >
@@ -268,7 +268,7 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.registerLink}
                 onPress={() => router.push('/register')}
               >
@@ -286,7 +286,7 @@ export default function LoginScreen() {
                   <Text style={styles.modalSubtitle}>
                     Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña
                   </Text>
-                  
+
                   <View style={styles.inputContainer}>
                     <Mail size={20} color={Colors.textLight} style={styles.inputIcon} />
                     <TextInput
@@ -310,7 +310,7 @@ export default function LoginScreen() {
                     >
                       <Text style={styles.modalCancelText}>Cancelar</Text>
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
                       style={styles.modalConfirmButton}
                       onPress={handleForgotPassword}

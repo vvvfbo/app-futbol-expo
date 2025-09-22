@@ -48,8 +48,16 @@ export const useTestDataGenerator = () => {
     const generarDatosPrueba = async () => {
         try {
             console.log('🚀 Iniciando generación de datos de prueba...');
+            console.log('👤 Usuario actual:', user);
+            console.log('🔧 Funciones disponibles:', {
+                crearClub: typeof crearClub,
+                crearEquipo: typeof crearEquipo,
+                agregarJugador: typeof agregarJugador,
+                crearTorneo: typeof crearTorneo
+            });
 
             if (!user) {
+                console.error('❌ Error: Usuario no autenticado');
                 throw new Error('Usuario no autenticado');
             }
 
@@ -69,36 +77,44 @@ export const useTestDataGenerator = () => {
                 categorias: {}
             };
 
+            console.log('🏢 Intentando crear club con datos:', clubData);
             const clubId = await crearClub(clubData);
-            console.log('✅ Club creado:', clubId);
+            console.log('✅ Club creado exitosamente:', clubId);
 
             // 2. Crear equipos
             console.log('👥 Creando equipos...');
             const equiposIds: string[] = [];
 
             for (let i = 0; i < 6; i++) {
-                const equipoData = EQUIPOS_DATA[i];
+                try {
+                    const equipoData = EQUIPOS_DATA[i];
+                    console.log(`⚽ Creando equipo ${i + 1}/6: ${equipoData.nombre}`);
 
-                const nuevoEquipo: Omit<Equipo, 'id' | 'fechaCreacion'> = {
-                    nombre: equipoData.nombre,
-                    categoria: (['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'] as const)[i % 6],
-                    ciudad: "Madrid",
-                    colores: equipoData.colores,
-                    entrenadorId: user.id,
-                    clubId: clubId,
-                    jugadores: []
-                };
+                    const nuevoEquipo: Omit<Equipo, 'id' | 'fechaCreacion'> = {
+                        nombre: equipoData.nombre,
+                        categoria: (['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'] as const)[i % 6],
+                        ciudad: "Madrid",
+                        colores: equipoData.colores,
+                        entrenadorId: user.id,
+                        clubId: clubId,
+                        jugadores: []
+                    };
 
-                const equipoId = await crearEquipo(nuevoEquipo);
-                equiposIds.push(equipoId);
-                console.log(`✅ Equipo creado: ${equipoData.nombre}`);
+                    console.log(`🔧 Datos del equipo ${equipoData.nombre}:`, nuevoEquipo);
+                    const equipoId = await crearEquipo(nuevoEquipo);
+                    console.log(`✅ Equipo ${equipoData.nombre} creado con ID:`, equipoId);
+                    equiposIds.push(equipoId);
 
-                // Agregar jugadores al equipo
-                const jugadores = generarJugadores(equipoId);
-                for (const jugador of jugadores) {
-                    await agregarJugador(equipoId, jugador);
+                    // Agregar jugadores al equipo
+                    const jugadores = generarJugadores(equipoId);
+                    for (const jugador of jugadores) {
+                        await agregarJugador(equipoId, jugador);
+                    }
+                    console.log(`✅ ${jugadores.length} jugadores agregados a ${equipoData.nombre}`);
+                } catch (equipoError) {
+                    console.error(`❌ Error creando equipo ${equipoData.nombre}:`, equipoError);
+                    // Continuamos con el siguiente equipo
                 }
-                console.log(`✅ ${jugadores.length} jugadores agregados a ${equipoData.nombre}`);
             }
 
             // 3. Crear torneo
@@ -201,8 +217,49 @@ export const useTestDataGenerator = () => {
         }
     };
 
+    const pruebaSimple = async () => {
+        try {
+            console.log('🧪 PRUEBA SIMPLE: Solo crear un club...');
+
+            if (!user) {
+                throw new Error('Usuario no autenticado');
+            }
+
+            const clubSimple: Omit<Club, 'id'> = {
+                nombre: "Club Prueba Simple",
+                ubicacion: {
+                    direccion: "Calle Test, 123",
+                    ciudad: "Madrid"
+                },
+                email: "test@clubsimple.com",
+                telefono: "+34 123 456 789",
+                entrenadorId: user.id,
+                fechaCreacion: new Date().toISOString(),
+                descripcion: "Club de prueba simple",
+                categorias: {}
+            };
+
+            console.log('🏢 Creando club simple...');
+            const clubId = await crearClub(clubSimple);
+            console.log('✅ Club simple creado exitosamente:', clubId);
+
+            return {
+                success: true,
+                data: { clubId, mensaje: 'Club simple creado correctamente' }
+            };
+
+        } catch (error) {
+            console.error('❌ Error en prueba simple:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            };
+        }
+    };
+
     return {
         generarDatosPrueba,
-        limpiarDatosPrueba
+        limpiarDatosPrueba,
+        pruebaSimple
     };
 };

@@ -14,7 +14,7 @@ export default function PerfilScreen() {
   const { user, logout } = useAuth();
   const { equipos, torneos } = useData();
   const { getTotalUnreadCount } = useChat();
-  const { generarDatosPrueba, limpiarDatosPrueba } = useTestDataGenerator();
+  const { generarDatosPrueba, limpiarDatosPrueba, pruebaSimple } = useTestDataGenerator();
   const [loading, setLoading] = useState(false);
 
   const misEquipos = user?.rol === 'entrenador' ? equipos.filter(e => e.entrenadorId === user?.id) : [];
@@ -191,6 +191,35 @@ export default function PerfilScreen() {
             <Database size={20} color="white" />
             <Text style={[styles.actionButtonText, { color: 'white', fontWeight: 'bold' }]}>
               {loading ? 'Generando Datos...' : '🚀 GENERAR DATOS DE PRUEBA'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#ff9500', marginTop: 10 }]}
+            onPress={async () => {
+              console.log('🧪 Botón prueba simple presionado');
+              try {
+                setLoading(true);
+                const result = await pruebaSimple();
+                console.log('🧪 Resultado prueba simple:', result);
+
+                if (result.success) {
+                  Alert.alert('✅ Prueba Simple', 'Club de prueba creado correctamente!');
+                } else {
+                  Alert.alert('❌ Error Prueba', result.error || 'Error en prueba simple');
+                }
+              } catch (error) {
+                console.error('💥 Error prueba simple:', error);
+                Alert.alert('💥 Error', 'Error inesperado en prueba simple');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <Database size={20} color="white" />
+            <Text style={[styles.actionButtonText, { color: 'white' }]}>
+              🧪 PRUEBA SIMPLE (Solo Club)
             </Text>
           </TouchableOpacity>
         </View>
