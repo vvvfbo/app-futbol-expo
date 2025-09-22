@@ -1,10 +1,12 @@
 [build]
   publish = "dist"
-  command = "echo 'Static files ready - no build needed'"
+  command = "npm install && npm run netlify-build"
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--production=false"
+  EXPO_CLI_NO_INSTALL_PROMPT = "1"
+  EXPO_NO_TELEMETRY = "1"
 
 # Redirects para Single Page Application (SPA)
 [[redirects]]
