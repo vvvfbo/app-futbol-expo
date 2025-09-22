@@ -67,8 +67,14 @@ export default function PerfilScreen() {
           text: '🎯 ¡CREAR!',
           onPress: async () => {
             console.log('🚀 Iniciando proceso de generación...');
+            console.log('🔧 Tipo de generarDatosPrueba:', typeof generarDatosPrueba);
+            console.log('🔧 Función existe:', !!generarDatosPrueba);
+            
             try {
+              console.log('⏳ Llamando setLoading(true)...');
               setLoading(true);
+              
+              console.log('📞 Llamando generarDatosPrueba()...');
               const result = await generarDatosPrueba();
               console.log('📊 Resultado del generador:', result);
 
@@ -82,6 +88,10 @@ export default function PerfilScreen() {
               }
             } catch (error) {
               console.error('💥 Error capturado:', error);
+              console.error('💥 Error tipo:', typeof error);
+              console.error('💥 Error nombre:', error instanceof Error ? error.name : 'No es Error');
+              console.error('💥 Error mensaje:', error instanceof Error ? error.message : 'Sin mensaje');
+              console.error('💥 Error stack:', error instanceof Error ? error.stack : 'Sin stack');
               Alert.alert('💥 Error Inesperado', `Algo salió mal:\n\n${error instanceof Error ? error.message : 'Error desconocido'}\n\n¿Intentar de nuevo?`);
             } finally {
               setLoading(false);

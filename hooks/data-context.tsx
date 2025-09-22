@@ -332,6 +332,10 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   }, []);
 
   const crearEquipo = useCallback(async (equipo: Omit<Equipo, 'id' | 'fechaCreacion'>): Promise<string> => {
+    console.log('🏗️ === CREANDO EQUIPO ===');
+    console.log('🏗️ Datos recibidos:', equipo);
+    console.log('🏗️ Equipos actuales:', equipos.length);
+    
     const id = Date.now().toString();
     const nuevoEquipo: Equipo = { 
       ...equipo, 
@@ -339,7 +343,13 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       fechaCreacion: new Date().toISOString(),
       jugadores: equipo.jugadores || []
     };
+    
+    console.log('🏗️ Nuevo equipo creado:', nuevoEquipo);
+    console.log('🏗️ Llamando saveEquipos con:', [...equipos, nuevoEquipo].length, 'equipos');
+    
     await saveEquipos([...equipos, nuevoEquipo]);
+    
+    console.log('🏗️ Equipo guardado correctamente, ID:', id);
     return id;
   }, [equipos, saveEquipos]);
 
