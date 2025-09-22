@@ -402,7 +402,11 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       fechaRegistro: new Date().toISOString()
     };
 
-    const nuevosEquipos = equipos.map(e => {
+    // 🔧 FIX: Leer equipos frescos desde AsyncStorage para evitar race conditions
+    const equiposData = await AsyncStorage.getItem('equipos');
+    const equiposActuales = equiposData ? parseJsonSafely(equiposData, 'Equipos') : [];
+
+    const nuevosEquipos = equiposActuales.map(e => {
       if (e.id === equipoId) {
         return { ...e, jugadores: [...(e.jugadores || []), nuevoJugador] };
       }
@@ -410,25 +414,33 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     });
 
     await saveEquipos(nuevosEquipos);
-  }, [equipos, saveEquipos]);
+  }, [saveEquipos, parseJsonSafely]);
 
   const actualizarJugador = useCallback(async (id: string, jugadorActualizado: Partial<Jugador>) => {
-    const nuevosEquipos = equipos.map(equipo => ({
+    // 🔧 FIX: Leer equipos frescos desde AsyncStorage para evitar race conditions
+    const equiposData = await AsyncStorage.getItem('equipos');
+    const equiposActuales = equiposData ? parseJsonSafely(equiposData, 'Equipos') : [];
+
+    const nuevosEquipos = equiposActuales.map(equipo => ({
       ...equipo,
-      jugadores: equipo.jugadores.map(jugador =>
+      jugadores: (equipo.jugadores || []).map((jugador: any) =>
         jugador.id === id ? { ...jugador, ...jugadorActualizado } : jugador
       )
     }));
     await saveEquipos(nuevosEquipos);
-  }, [equipos, saveEquipos]);
+  }, [saveEquipos, parseJsonSafely]);
 
   const eliminarJugador = useCallback(async (id: string) => {
-    const nuevosEquipos = equipos.map(equipo => ({
+    // 🔧 FIX: Leer equipos frescos desde AsyncStorage para evitar race conditions
+    const equiposData = await AsyncStorage.getItem('equipos');
+    const equiposActuales = equiposData ? parseJsonSafely(equiposData, 'Equipos') : [];
+
+    const nuevosEquipos = equiposActuales.map(equipo => ({
       ...equipo,
-      jugadores: equipo.jugadores.filter(jugador => jugador.id !== id)
+      jugadores: (equipo.jugadores || []).filter((jugador: any) => jugador.id !== id)
     }));
     await saveEquipos(nuevosEquipos);
-  }, [equipos, saveEquipos]);
+  }, [saveEquipos, parseJsonSafely]);
 
   const obtenerJugadoresPorEquipo = useCallback((equipoId: string): Jugador[] => {
     const equipo = equipos.find(e => e.id === equipoId);

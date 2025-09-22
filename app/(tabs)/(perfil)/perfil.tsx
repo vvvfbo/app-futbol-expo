@@ -15,7 +15,7 @@ export default function PerfilScreen() {
   const { user, logout } = useAuth();
   const { equipos, torneos } = useData();
   const { getTotalUnreadCount } = useChat();
-  const { generarDatosPrueba, limpiarDatosPrueba, pruebaSimple, verificarDatos } = useTestDataGenerator();
+  const { generarDatosPrueba, limpiarDatosPrueba, pruebaSimple, verificarDatos, probarPersistencia } = useTestDataGenerator();
   const { runComprehensiveTest } = useComprehensiveTester();
   const [loading, setLoading] = useState(false);
 
@@ -291,7 +291,7 @@ export default function PerfilScreen() {
                 Alert.alert(
                   '🔍 Verificación de Datos',
                   result.success
-                    ? '✅ Verificación completada. Revisa la consola para detalles.'
+                    ? `✅ ${result.data?.message || 'Verificación completada'}\n\n📊 Total elementos: ${result.data?.totalDatos || 0}\n\n💡 Revisa la consola para más detalles.`
                     : `❌ Error: ${result.error}`
                 );
               } catch (error) {
@@ -343,6 +343,57 @@ export default function PerfilScreen() {
             <Database size={20} color="white" />
             <Text style={[styles.actionButtonText, { color: 'white' }]}>
               {loading ? 'Ejecutando Tests...' : '🔬 TEST COMPREHENSIVO COMPLETO'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Botón de prueba de persistencia */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#FF5722' }]}
+            onPress={async () => {
+              console.log('🔧 INICIANDO PRUEBA DE PERSISTENCIA');
+
+              try {
+                if (!probarPersistencia) {
+                  Alert.alert('❌ Error', 'Función probarPersistencia no disponible');
+                  return;
+                }
+
+                setLoading(true);
+                const result = await probarPersistencia();
+
+                if (result.success) {
+                  Alert.alert(
+                    '✅ Persistencia OK',
+                    `🎉 ¡Prueba exitosa!\n\n` +
+                    `📋 Detalles:\n` +
+                    `• Club creado: ${result.data?.clubId}\n` +
+                    `• Equipo creado: ${result.data?.equipoId}\n` +
+                    `• Jugadores agregados: ${result.data?.jugadoresAgregados}\n\n` +
+                    `${result.data?.mensaje}\n\n` +
+                    `✅ No hay race conditions detectados`
+                  );
+                } else {
+                  Alert.alert(
+                    '❌ Error de Persistencia',
+                    `💥 Se detectó un problema:\n\n${result.error}\n\n` +
+                    `🔧 Esto indica que hay problemas de race condition o persistencia.\n` +
+                    `Revisa la consola para más detalles.`
+                  );
+                }
+              } catch (error) {
+                console.error('💥 Error en prueba persistencia:', error);
+                Alert.alert('💥 Error', 'Error inesperado en prueba de persistencia');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <Database size={20} color="white" />
+            <Text style={[styles.actionButtonText, { color: 'white' }]}>
+              {loading ? 'Probando...' : '🔧 PROBAR PERSISTENCIA REAL'}
             </Text>
           </TouchableOpacity>
         </View>

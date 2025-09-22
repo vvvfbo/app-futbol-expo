@@ -48,19 +48,40 @@ export const useTestDataGenerator = () => {
 
     const verificarDatos = async () => {
         try {
-            console.log('🔍 === VERIFICACIÓN DE DATOS ===');
+            console.log('🔍 === VERIFICACIÓN COMPLETA DE DATOS ===');
 
             // Verificar AsyncStorage directamente
             const keys = ['clubes', 'equipos', 'jugadores', 'torneos', 'partidos'];
+            let totalDatos = 0;
+
             for (const key of keys) {
                 const data = await AsyncStorage.getItem(key);
-                console.log(`📦 ${key}:`, data ? JSON.parse(data).length : 'No existe');
+                if (data) {
+                    try {
+                        const parsed = JSON.parse(data);
+                        console.log(`📦 ${key}: ${parsed.length} elementos`);
+                        totalDatos += parsed.length;
+
+                        // Mostrar detalles de los primeros elementos
+                        if (parsed.length > 0 && (key === 'clubes' || key === 'equipos')) {
+                            console.log(`  └ Primer elemento de ${key}:`, parsed[0].nombre || parsed[0].id);
+                        }
+                    } catch (parseError) {
+                        console.error(`❌ Error parseando ${key}:`, parseError);
+                    }
+                } else {
+                    console.log(`📦 ${key}: No existe`);
+                }
             }
 
             // Verificar usuario actual
-            console.log('👤 Usuario actual:', user);
+            console.log('👤 Usuario actual:', user?.nombre, `(${user?.id})`);
+            console.log('📊 Total datos en sistema:', totalDatos);
 
-            return { success: true };
+            return {
+                success: true,
+                data: { totalDatos, message: totalDatos > 0 ? '¡Datos encontrados!' : 'No hay datos' }
+            };
         } catch (error) {
             console.error('❌ Error verificando datos:', error);
             return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
@@ -134,8 +155,12 @@ export const useTestDataGenerator = () => {
                     equiposIds.push(equipoId);
 
                     // Agregar jugadores al equipo
+                    console.log(`👥 Generando ${15} jugadores para ${equipoData.nombre}...`);
                     const jugadores = generarJugadores(equipoId);
-                    for (const jugador of jugadores) {
+                    console.log(`📝 Agregando jugadores uno por uno...`);
+                    for (let j = 0; j < jugadores.length; j++) {
+                        const jugador = jugadores[j];
+                        console.log(`  └ Jugador ${j + 1}/${jugadores.length}: ${jugador.nombre}`);
                         await agregarJugador(equipoId, jugador);
                     }
                     console.log(`✅ ${jugadores.length} jugadores agregados a ${equipoData.nombre}`);
@@ -285,10 +310,108 @@ export const useTestDataGenerator = () => {
         }
     };
 
+    const probarPersistencia = async () => {
+        try {
+            console.log('🧪 === PRUEBA DE PERSISTENCIA EN TIEMPO REAL ===');
+
+            if (!user) {
+                throw new Error('Usuario no autenticado');
+            }
+
+            // Paso 1: Crear un club
+            console.log('📝 Paso 1: Creando club...');
+            const clubData: Omit<Club, 'id'> = {
+                nombre: `Club Persistencia ${Date.now()}`,
+                ubicacion: { direccion: "Test", ciudad: "Madrid" },
+                entrenadorId: user.id,
+                fechaCreacion: new Date().toISOString(),
+                categorias: {}
+            };
+
+            const clubId = await crearClub(clubData);
+            console.log('✅ Club creado con ID:', clubId);
+
+            // Verificar inmediatamente en AsyncStorage
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const clubesEnStorage = await AsyncStorage.getItem('clubes');
+            const clubesParsed = clubesEnStorage ? JSON.parse(clubesEnStorage) : [];
+            console.log('📦 Clubes en AsyncStorage después de crear:', clubesParsed.length);
+
+            // Paso 2: Crear un equipo inmediatamente
+            console.log('📝 Paso 2: Creando equipo inmediatamente...');
+            const equipoData: Omit<Equipo, 'id' | 'fechaCreacion'> = {
+                nombre: `Equipo Persistencia ${Date.now()}`,
+                categoria: 'Senior',
+                ciudad: 'Madrid',
+                colores: { principal: '#FF0000', secundario: '#FFFFFF' },
+                entrenadorId: user.id,
+                clubId: clubId,
+                jugadores: []
+            };
+
+            const equipoId = await crearEquipo(equipoData);
+            console.log('✅ Equipo creado con ID:', equipoId);
+
+            // Verificar inmediatamente en AsyncStorage
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const equiposEnStorage = await AsyncStorage.getItem('equipos');
+            const equiposParsed = equiposEnStorage ? JSON.parse(equiposEnStorage) : [];
+            console.log('📦 Equipos en AsyncStorage después de crear:', equiposParsed.length);
+
+            // Paso 3: Agregar jugador inmediatamente (aquí es donde fallaba antes)
+            console.log('📝 Paso 3: Agregando jugador inmediatamente...');
+            const jugadorData = {
+                nombre: `Jugador Persistencia ${Date.now()}`,
+                numero: 10,
+                posicion: 'Delantero' as const,
+                edad: 25
+            };
+
+            await agregarJugador(equipoId, jugadorData);
+            console.log('✅ Jugador agregado');
+
+            // Verificar final en AsyncStorage
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const equiposFinales = await AsyncStorage.getItem('equipos');
+            const equiposFinalesParsed = equiposFinales ? JSON.parse(equiposFinales) : [];
+
+            console.log('📦 Verificación final:', {
+                equiposTotal: equiposFinalesParsed.length,
+                equipoEncontrado: equiposFinalesParsed.find((e: any) => e.id === equipoId),
+                jugadoresDelEquipo: equiposFinalesParsed.find((e: any) => e.id === equipoId)?.jugadores?.length || 0
+            });
+
+            const equipoCreado = equiposFinalesParsed.find((e: any) => e.id === equipoId);
+            const jugadoresCount = equipoCreado?.jugadores?.length || 0;
+
+            if (jugadoresCount === 0) {
+                throw new Error('❌ RACE CONDITION DETECTADO: El jugador se perdió');
+            }
+
+            return {
+                success: true,
+                data: {
+                    clubId,
+                    equipoId,
+                    jugadoresAgregados: jugadoresCount,
+                    mensaje: '✅ Persistencia funciona correctamente - No hay race conditions'
+                }
+            };
+
+        } catch (error) {
+            console.error('❌ Error en prueba de persistencia:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            };
+        }
+    };
+
     return {
         generarDatosPrueba,
         limpiarDatosPrueba,
         pruebaSimple,
-        verificarDatos
+        verificarDatos,
+        probarPersistencia
     };
 };
