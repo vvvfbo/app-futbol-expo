@@ -124,7 +124,26 @@ export default function LoginScreen() {
                         updateFormData('password', 'admin123');
                       }}
                     >
-                      <Text style={styles.testButtonText}>Usar Admin</Text>
+                      <Text style={styles.testButtonText}>Completar Admin</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.testButton, { backgroundColor: Colors.primary }]}
+                      onPress={async () => {
+                        try {
+                          setIsLoading(true);
+                          await login({ 
+                            email: 'admin@futbolapp.com', 
+                            password: 'admin123',
+                            rememberMe: false 
+                          });
+                        } catch (error) {
+                          Alert.alert('Error', 'No se pudo hacer login automático');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                    >
+                      <Text style={styles.testButtonText}>🚀 AUTO-LOGIN ADMIN</Text>
                     </TouchableOpacity>
                   </View>
                   
@@ -139,7 +158,26 @@ export default function LoginScreen() {
                         updateFormData('password', 'test123');
                       }}
                     >
-                      <Text style={styles.testButtonText}>Usar Test</Text>
+                      <Text style={styles.testButtonText}>Completar Test</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.testButton, { backgroundColor: Colors.secondary }]}
+                      onPress={async () => {
+                        try {
+                          setIsLoading(true);
+                          await login({ 
+                            email: 'test@futbolapp.com', 
+                            password: 'test123',
+                            rememberMe: false 
+                          });
+                        } catch (error) {
+                          Alert.alert('Error', 'No se pudo hacer login automático');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                    >
+                      <Text style={styles.testButtonText}>🧪 AUTO-LOGIN TEST</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
