@@ -106,8 +106,13 @@ export default function PerfilScreen() {
               }
             };
 
-            // Ejecutar la función
-            executeGenerator();
+            // Ejecutar la función inmediatamente
+            console.log('🚀 Ejecutando executeGenerator()...');
+            executeGenerator().catch((error) => {
+              console.error('💥 Error no capturado en executeGenerator:', error);
+              Alert.alert('💥 Error Fatal', 'Error crítico en la generación de datos');
+              setLoading(false);
+            });
           }
         }
       ]
