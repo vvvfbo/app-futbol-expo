@@ -1,9 +1,10 @@
 [build]
   publish = "dist"
-  command = "npm run build-web"
+  command = "npm run netlify-build"
 
 [build.environment]
   NODE_VERSION = "20"
+  NPM_FLAGS = "--production=false"
 
 # Redirects para Single Page Application (SPA)
 [[redirects]]

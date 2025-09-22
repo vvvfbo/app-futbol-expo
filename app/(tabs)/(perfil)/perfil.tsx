@@ -47,26 +47,35 @@ export default function PerfilScreen() {
   };
 
   const handleGenerateTestData = () => {
+    console.log('🎯 Botón presionado, usuario:', user?.nombre, 'rol:', user?.rol);
     Alert.alert(
-      'Generar Datos de Prueba',
-      '¿Quieres crear datos de prueba para testing? Esto incluirá clubes, equipos, jugadores y un torneo completo.',
+      '🚀 Generar Datos de Prueba',
+      `¡Hola ${user?.nombre}! ¿Quieres crear datos de prueba completos?\n\n✅ 1 Club con ubicación\n⚽ 6 Equipos españoles\n👥 90 Jugadores (15 por equipo)\n🏆 1 Torneo con partidos\n\nEsto te permitirá probar todas las funciones de la app.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Generar',
+          text: '🎯 ¡CREAR!',
           onPress: async () => {
+            console.log('🚀 Iniciando proceso de generación...');
             try {
               setLoading(true);
               const result = await generarDatosPrueba();
+              console.log('📊 Resultado del generador:', result);
+
               if (result.success) {
-                Alert.alert('¡Éxito!', 'Los datos de prueba se han generado correctamente.');
+                Alert.alert(
+                  '🎉 ¡Éxito Total!',
+                  `¡Datos creados correctamente!\n\n✅ Club: Club Deportivo Prueba\n⚽ Equipos: ${result.data?.equiposIds?.length || 6}\n🏆 Torneo: Copa de Prueba 2024\n📅 Partidos: ${result.data?.partidosCreados || 15}\n\n¡Ve a explorar tus nuevos datos!`
+                );
               } else {
-                Alert.alert('Error', result.error || 'No se pudieron generar los datos de prueba.');
+                Alert.alert('❌ Error', `No se pudieron generar los datos:\n\n${result.error || 'Error desconocido'}\n\n¿Intentar de nuevo?`);
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudieron generar los datos de prueba. Inténtalo de nuevo.');
+              console.error('💥 Error capturado:', error);
+              Alert.alert('💥 Error Inesperado', `Algo salió mal:\n\n${error instanceof Error ? error.message : 'Error desconocido'}\n\n¿Intentar de nuevo?`);
             } finally {
               setLoading(false);
+              console.log('✅ Proceso completado, loading = false');
             }
           }
         }
@@ -174,18 +183,16 @@ export default function PerfilScreen() {
             <Text style={styles.actionButtonText}>Historial de Torneos</Text>
           </TouchableOpacity>
 
-          {user?.rol === 'entrenador' && (
-            <TouchableOpacity
-              style={[styles.actionButton, loading && styles.disabledButton]}
-              onPress={handleGenerateTestData}
-              disabled={loading}
-            >
-              <Database size={20} color={loading ? Colors.textLight : Colors.primary} />
-              <Text style={[styles.actionButtonText, loading && styles.disabledText]}>
-                {loading ? 'Generando...' : 'Generar Datos de Prueba'}
-              </Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[styles.actionButton, loading && styles.disabledButton, { backgroundColor: Colors.primary }]}
+            onPress={handleGenerateTestData}
+            disabled={loading}
+          >
+            <Database size={20} color="white" />
+            <Text style={[styles.actionButtonText, { color: 'white', fontWeight: 'bold' }]}>
+              {loading ? 'Generando Datos...' : '🚀 GENERAR DATOS DE PRUEBA'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
