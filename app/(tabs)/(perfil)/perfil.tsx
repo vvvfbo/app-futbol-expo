@@ -14,7 +14,7 @@ export default function PerfilScreen() {
   const { user, logout } = useAuth();
   const { equipos, torneos } = useData();
   const { getTotalUnreadCount } = useChat();
-  const { generarDatosPrueba, limpiarDatosPrueba, pruebaSimple } = useTestDataGenerator();
+  const { generarDatosPrueba, limpiarDatosPrueba, pruebaSimple, verificarDatos } = useTestDataGenerator();
   const [loading, setLoading] = useState(false);
 
   const misEquipos = user?.rol === 'entrenador' ? equipos.filter(e => e.entrenadorId === user?.id) : [];
@@ -220,6 +220,33 @@ export default function PerfilScreen() {
             <Database size={20} color="white" />
             <Text style={[styles.actionButtonText, { color: 'white' }]}>
               🧪 PRUEBA SIMPLE (Solo Club)
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Botón de verificación de datos */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: Colors.info }]}
+            onPress={async () => {
+              try {
+                console.log('🔍 Verificando datos guardados...');
+                const result = await verificarDatos();
+                Alert.alert(
+                  '🔍 Verificación de Datos',
+                  result.success
+                    ? '✅ Verificación completada. Revisa la consola para detalles.'
+                    : `❌ Error: ${result.error}`
+                );
+              } catch (error) {
+                console.error('💥 Error verificación:', error);
+                Alert.alert('💥 Error', 'Error inesperado en verificación');
+              }
+            }}
+          >
+            <Database size={20} color="white" />
+            <Text style={[styles.actionButtonText, { color: 'white' }]}>
+              🔍 VERIFICAR DATOS GUARDADOS
             </Text>
           </TouchableOpacity>
         </View>

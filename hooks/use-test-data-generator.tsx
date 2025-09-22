@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/auth-context';
 import { useData } from '@/hooks/data-context';
 import { Club, Equipo, Jugador, Torneo } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const useTestDataGenerator = () => {
     const { crearClub, crearEquipo, agregarJugador, crearTorneo, inscribirEquipoEnTorneo, crearPartidos } = useData();
@@ -45,6 +46,27 @@ export const useTestDataGenerator = () => {
         return jugadores;
     };
 
+    const verificarDatos = async () => {
+        try {
+            console.log('🔍 === VERIFICACIÓN DE DATOS ===');
+
+            // Verificar AsyncStorage directamente
+            const keys = ['clubes', 'equipos', 'jugadores', 'torneos', 'partidos'];
+            for (const key of keys) {
+                const data = await AsyncStorage.getItem(key);
+                console.log(`📦 ${key}:`, data ? JSON.parse(data).length : 'No existe');
+            }
+
+            // Verificar usuario actual
+            console.log('👤 Usuario actual:', user);
+
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Error verificando datos:', error);
+            return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
+        }
+    };
+
     const generarDatosPrueba = async () => {
         try {
             console.log('🚀 Iniciando generación de datos de prueba...');
@@ -86,8 +108,8 @@ export const useTestDataGenerator = () => {
             const equiposIds: string[] = [];
 
             for (let i = 0; i < 6; i++) {
+                const equipoData = EQUIPOS_DATA[i];
                 try {
-                    const equipoData = EQUIPOS_DATA[i];
                     console.log(`⚽ Creando equipo ${i + 1}/6: ${equipoData.nombre}`);
 
                     const nuevoEquipo: Omit<Equipo, 'id' | 'fechaCreacion'> = {
@@ -260,6 +282,7 @@ export const useTestDataGenerator = () => {
     return {
         generarDatosPrueba,
         limpiarDatosPrueba,
-        pruebaSimple
+        pruebaSimple,
+        verificarDatos
     };
 };
