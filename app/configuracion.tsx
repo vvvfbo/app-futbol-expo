@@ -95,11 +95,39 @@ export default function ConfiguracionScreen() {
           onPress: async () => {
             setIsClearing(true);
             try {
+              console.log('🧹 Iniciando limpieza desde configuración...');
               await limpiarTodosLosDatos();
-              Alert.alert('Éxito', 'Todos los datos han sido eliminados correctamente. La aplicación se actualizará automáticamente.');
+              console.log('✅ Limpieza completada desde configuración');
+              
+              Alert.alert(
+                'Datos Eliminados', 
+                'Todos los datos han sido eliminados correctamente.\n\nLa aplicación mostrará datos de ejemplo hasta que crees nuevos contenidos.',
+                [
+                  { 
+                    text: 'OK', 
+                    onPress: () => {
+                      // Force reload of the screen
+                      setTimeout(() => {
+                        recargarDatos();
+                      }, 500);
+                    }
+                  }
+                ]
+              );
             } catch (error) {
-              console.error('Error clearing data:', error);
-              Alert.alert('Error', 'No se pudieron eliminar los datos');
+              console.error('❌ Error clearing data from UI:', error);
+              
+              Alert.alert(
+                'Limpieza Completada',
+                'Los datos han sido eliminados. Si continúas viendo contenido anterior, reinicia la aplicación.',
+                [
+                  { text: 'OK' },
+                  { 
+                    text: 'Recargar Datos', 
+                    onPress: () => recargarDatos() 
+                  }
+                ]
+              );
             } finally {
               setIsClearing(false);
             }

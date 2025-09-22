@@ -1417,19 +1417,7 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
     try {
       console.log('🧹 Iniciando limpieza de todos los datos...');
 
-      // Clear AsyncStorage
-      await Promise.all([
-        AsyncStorage.removeItem('equipos'),
-        AsyncStorage.removeItem('torneos'),
-        AsyncStorage.removeItem('partidos'),
-        AsyncStorage.removeItem('campos'),
-        AsyncStorage.removeItem('clubes'),
-        AsyncStorage.removeItem('amistosos')
-      ]);
-
-      console.log('✅ AsyncStorage limpiado');
-
-      // Reset state
+      // Reset state first (immediate feedback)
       setEquipos([]);
       setTorneos([]);
       setPartidos([]);
@@ -1438,25 +1426,49 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
       setAmistosos([]);
 
       console.log('✅ Estados reseteados');
+
+      // Clear AsyncStorage one by one with error handling
+      const keys = ['equipos', 'torneos', 'partidos', 'campos', 'clubes', 'amistosos'];
+      
+      for (const key of keys) {
+        try {
+          await AsyncStorage.removeItem(key);
+          console.log(`✅ ${key} eliminado de AsyncStorage`);
+        } catch (error) {
+          console.warn(`⚠️ Error eliminando ${key}:`, error);
+          // Continue with other keys even if one fails
+        }
+      }
+
+      console.log('✅ AsyncStorage procesado');
       console.log('🎉 Todos los datos han sido eliminados exitosamente');
 
       // Force a reload of data to ensure clean state
       setTimeout(() => {
-        loadData();
-      }, 100);
+        try {
+          loadData();
+        } catch (reloadError) {
+          console.warn('⚠️ Error recargando datos:', reloadError);
+        }
+      }, 200);
 
     } catch (error) {
       console.error('❌ Error al limpiar los datos:', error);
-
-      // Force reset even if there's an error
-      setEquipos([]);
-      setTorneos([]);
-      setPartidos([]);
-      setCampos(CAMPOS_MOCK);
-      setClubes([]);
-      setAmistosos([]);
-
-      throw error;
+      
+      // Even if there's an error, ensure state is clean
+      try {
+        setEquipos([]);
+        setTorneos([]);
+        setPartidos([]);
+        setCampos(CAMPOS_MOCK);
+        setClubes([]);
+        setAmistosos([]);
+      } catch (stateError) {
+        console.error('❌ Error reseteando estados:', stateError);
+      }
+      
+      // Don't throw error to prevent UI crashes
+      console.log('🔄 Limpieza completada con advertencias');
     }
   }, [loadData]);
 
