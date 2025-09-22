@@ -1,12 +1,13 @@
 [build]
   publish = "dist"
-  command = "npm install && npm run netlify-build"
+  command = "npm ci && npm run netlify-build"
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--production=false"
   EXPO_CLI_NO_INSTALL_PROMPT = "1"
   EXPO_NO_TELEMETRY = "1"
+  CI = "true"
 
 # Redirects para Single Page Application (SPA)
 [[redirects]]

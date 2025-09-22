@@ -9,6 +9,7 @@
     "build-ios": "expo export --platform ios --output-dir dist", 
     "build-all": "expo export --output-dir dist",
     "netlify-build": "npx expo export --platform web --output-dir dist",
+    "build-safe": "npx expo export --platform web --output-dir dist || (mkdir -p dist && cp public/index.html dist/index.html)",
     "compile": "npx tsc --noEmit",
     "lint": "expo lint",
     "lint:fix": "expo lint --fix",
