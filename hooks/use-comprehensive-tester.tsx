@@ -1,16 +1,16 @@
+import { Club, Equipo, Jugador } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './auth-context';
 import { useData } from './data-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Club, Equipo, Jugador } from '@/types';
 
 export const useComprehensiveTester = () => {
     const { user } = useAuth();
-    const { 
-        crearClub, 
-        crearEquipo, 
-        agregarJugador, 
-        crearTorneo, 
-        inscribirEquipoEnTorneo, 
+    const {
+        crearClub,
+        crearEquipo,
+        agregarJugador,
+        crearTorneo,
+        inscribirEquipoEnTorneo,
         crearPartidos,
         clubes,
         equipos,
@@ -26,7 +26,7 @@ export const useComprehensiveTester = () => {
 
     const testAsyncStorage = async () => {
         logSection('TEST 1: AsyncStorage Básico');
-        
+
         try {
             // Test de escritura
             console.log('📝 Probando escritura en AsyncStorage...');
@@ -37,7 +37,7 @@ export const useComprehensiveTester = () => {
             console.log('📖 Probando lectura de AsyncStorage...');
             const value = await AsyncStorage.getItem('test-key');
             console.log('📖 Valor leído:', value);
-            
+
             if (value === 'test-value') {
                 console.log('✅ AsyncStorage funciona correctamente');
                 return true;
@@ -53,14 +53,14 @@ export const useComprehensiveTester = () => {
 
     const testAuth = () => {
         logSection('TEST 2: Autenticación');
-        
+
         console.log('👤 Usuario actual:', user);
         console.log('🔍 Tipo de usuario:', typeof user);
         console.log('🔍 Usuario existe:', !!user);
         console.log('🔍 Usuario ID:', user?.id);
         console.log('🔍 Usuario nombre:', user?.nombre);
         console.log('🔍 Usuario rol:', user?.rol);
-        
+
         if (user && user.id && user.nombre) {
             console.log('✅ Autenticación OK');
             return true;
@@ -72,7 +72,7 @@ export const useComprehensiveTester = () => {
 
     const testFunctionAvailability = () => {
         logSection('TEST 3: Disponibilidad de Funciones');
-        
+
         const functions = {
             crearClub: typeof crearClub,
             crearEquipo: typeof crearEquipo,
@@ -83,7 +83,7 @@ export const useComprehensiveTester = () => {
         };
 
         console.log('🔍 Funciones disponibles:', functions);
-        
+
         const allFunctionsAvailable = Object.entries(functions).every(([name, type]) => {
             const isFunction = type === 'function';
             console.log(`${isFunction ? '✅' : '❌'} ${name}: ${type}`);
@@ -101,25 +101,25 @@ export const useComprehensiveTester = () => {
 
     const testDataContext = () => {
         logSection('TEST 4: Estado del Data Context');
-        
+
         console.log('📊 Estado actual del data context:');
         console.log('🏢 Clubes:', clubes?.length || 0, 'elementos');
         console.log('⚽ Equipos:', equipos?.length || 0, 'elementos');
         console.log('🏆 Torneos:', torneos?.length || 0, 'elementos');
         console.log('📅 Partidos:', partidos?.length || 0, 'elementos');
-        
+
         console.log('🔍 Tipos de datos:');
         console.log('clubes type:', typeof clubes);
         console.log('equipos type:', typeof equipos);
         console.log('torneos type:', typeof torneos);
         console.log('partidos type:', typeof partidos);
-        
+
         return true;
     };
 
     const testCreateClub = async () => {
         logSection('TEST 5: Crear Club');
-        
+
         if (!user) {
             console.log('❌ No hay usuario autenticado');
             return false;
@@ -142,13 +142,13 @@ export const useComprehensiveTester = () => {
 
             console.log('🏢 Intentando crear club:', testClub.nombre);
             console.log('🔧 Datos del club:', testClub);
-            
+
             const clubId = await crearClub(testClub);
-            
+
             console.log('📝 Club creado con ID:', clubId);
             console.log('🔍 Tipo de ID:', typeof clubId);
             console.log('🔍 ID existe:', !!clubId);
-            
+
             if (clubId && typeof clubId === 'string') {
                 console.log('✅ Club creado exitosamente');
                 return { success: true, id: clubId };
@@ -164,7 +164,7 @@ export const useComprehensiveTester = () => {
 
     const testCreateEquipo = async (clubId?: string) => {
         logSection('TEST 6: Crear Equipo');
-        
+
         if (!user) {
             console.log('❌ No hay usuario autenticado');
             return false;
@@ -191,13 +191,13 @@ export const useComprehensiveTester = () => {
             console.log('⚽ Intentando crear equipo:', testEquipo.nombre);
             console.log('🔧 Datos del equipo:', testEquipo);
             console.log('🔧 Función crearEquipo disponible:', typeof crearEquipo);
-            
+
             const equipoId = await crearEquipo(testEquipo);
-            
+
             console.log('📝 Equipo creado con ID:', equipoId);
             console.log('🔍 Tipo de ID:', typeof equipoId);
             console.log('🔍 ID existe:', !!equipoId);
-            
+
             if (equipoId && typeof equipoId === 'string') {
                 console.log('✅ Equipo creado exitosamente');
                 return { success: true, id: equipoId };
@@ -215,7 +215,7 @@ export const useComprehensiveTester = () => {
 
     const testCreateJugador = async (equipoId?: string) => {
         logSection('TEST 7: Crear Jugador');
-        
+
         const useEquipoId = equipoId || 'equipo-test-default';
         console.log('⚽ Usando Equipo ID:', useEquipoId);
 
@@ -232,9 +232,9 @@ export const useComprehensiveTester = () => {
 
             console.log('👤 Intentando crear jugador:', testJugador.nombre);
             console.log('🔧 Datos del jugador:', testJugador);
-            
+
             await agregarJugador(useEquipoId, testJugador);
-            
+
             console.log('✅ Jugador creado exitosamente');
             return { success: true };
         } catch (error) {
@@ -245,10 +245,10 @@ export const useComprehensiveTester = () => {
 
     const verifyAsyncStorageData = async () => {
         logSection('TEST 8: Verificar Datos en AsyncStorage');
-        
+
         try {
             const keys = ['clubes', 'equipos', 'jugadores', 'torneos', 'partidos'];
-            
+
             for (const key of keys) {
                 const data = await AsyncStorage.getItem(key);
                 if (data) {
@@ -261,7 +261,7 @@ export const useComprehensiveTester = () => {
                     console.log(`📦 ${key}: No existe`);
                 }
             }
-            
+
             return true;
         } catch (error) {
             console.error('❌ Error verificando AsyncStorage:', error);
@@ -271,7 +271,7 @@ export const useComprehensiveTester = () => {
 
     const runComprehensiveTest = async () => {
         logSection('🚀 INICIANDO TEST COMPREHENSIVO COMPLETO');
-        
+
         const results = {
             asyncStorage: false,
             auth: false,
@@ -287,52 +287,52 @@ export const useComprehensiveTester = () => {
             // Test 1: AsyncStorage
             console.log('\n🔄 Ejecutando Test 1/8...');
             results.asyncStorage = await testAsyncStorage();
-            
+
             // Test 2: Auth
             console.log('\n🔄 Ejecutando Test 2/8...');
             results.auth = testAuth();
-            
+
             // Test 3: Functions
             console.log('\n🔄 Ejecutando Test 3/8...');
             results.functions = testFunctionAvailability();
-            
+
             // Test 4: Data Context
             console.log('\n🔄 Ejecutando Test 4/8...');
             results.dataContext = testDataContext();
-            
+
             // Test 5: Create Club
             console.log('\n🔄 Ejecutando Test 5/8...');
             const clubResult = await testCreateClub();
             results.createClub = typeof clubResult === 'object' && clubResult.success;
             const clubId = typeof clubResult === 'object' && clubResult.success ? clubResult.id : undefined;
-            
+
             // Test 6: Create Equipo
             console.log('\n🔄 Ejecutando Test 6/8...');
             const equipoResult = await testCreateEquipo(clubId);
             results.createEquipo = typeof equipoResult === 'object' && equipoResult.success;
             const equipoId = typeof equipoResult === 'object' && equipoResult.success ? equipoResult.id : undefined;
-            
+
             // Test 7: Create Jugador
             console.log('\n🔄 Ejecutando Test 7/8...');
             const jugadorResult = await testCreateJugador(equipoId);
             results.createJugador = typeof jugadorResult === 'object' && jugadorResult.success;
-            
+
             // Test 8: Verify Storage
             console.log('\n🔄 Ejecutando Test 8/8...');
             results.verifyStorage = await verifyAsyncStorageData();
-            
+
             // Resumen final
             logSection('📊 RESUMEN DE RESULTADOS');
             Object.entries(results).forEach(([test, success]) => {
                 console.log(`${success ? '✅' : '❌'} ${test}: ${success ? 'PASÓ' : 'FALLÓ'}`);
             });
-            
+
             const totalTests = Object.keys(results).length;
             const passedTests = Object.values(results).filter(Boolean).length;
             const percentage = Math.round((passedTests / totalTests) * 100);
-            
+
             console.log(`\n📈 Resultado final: ${passedTests}/${totalTests} tests pasados (${percentage}%)`);
-            
+
             if (percentage === 100) {
                 console.log('🎉 ¡TODOS LOS TESTS PASARON!');
             } else if (percentage >= 75) {
@@ -340,9 +340,9 @@ export const useComprehensiveTester = () => {
             } else {
                 console.log('💥 Múltiples fallos detectados, revisar configuración');
             }
-            
+
             return results;
-            
+
         } catch (error) {
             console.error('💥 Error durante el test comprehensivo:', error);
             return results;

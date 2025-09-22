@@ -23,6 +23,13 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:unit": "node __tests__/test-runner.js",
+    "test:full": "npm run test:unit && npm run test",
+    "test:quick": "node __tests__/test-runner.js",
+    "pretest": "node __tests__/test-runner.js",
+    "verify": "npm run test:unit",
+    "pre-deploy": "node verify-pre-deploy.js",
+    "check": "node verify-pre-deploy.js",
     "clear": "expo start -c",
     "reset": "expo start --clear --reset-cache",
     "doctor": "expo doctor"

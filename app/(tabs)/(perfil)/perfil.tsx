@@ -2,8 +2,8 @@ import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-context';
 import { useChat } from '@/hooks/chat-context';
 import { useData } from '@/hooks/data-context';
-import { useTestDataGenerator } from '@/hooks/use-test-data-generator';
 import { useComprehensiveTester } from '@/hooks/use-comprehensive-tester';
+import { useTestDataGenerator } from '@/hooks/use-test-data-generator';
 import { router } from 'expo-router';
 import { Bell, Database, LogOut, MessageCircle, Settings, Trophy, User, Users } from 'lucide-react-native';
 import { useState } from 'react';
@@ -313,21 +313,21 @@ export default function PerfilScreen() {
             style={[styles.actionButton, { backgroundColor: '#9C27B0' }]}
             onPress={async () => {
               console.log('🔬 INICIANDO TEST COMPREHENSIVO COMPLETO');
-              
+
               try {
                 setLoading(true);
                 const results = await runComprehensiveTest();
-                
+
                 const totalTests = Object.keys(results).length;
                 const passedTests = Object.values(results).filter(Boolean).length;
                 const percentage = Math.round((passedTests / totalTests) * 100);
-                
+
                 Alert.alert(
                   '🔬 Test Comprehensivo Completado',
                   `📊 Resultados: ${passedTests}/${totalTests} tests pasados (${percentage}%)\n\n` +
-                  `${percentage === 100 ? '🎉 ¡TODOS LOS TESTS PASARON!' : 
-                    percentage >= 75 ? '⚠️ La mayoría pasaron, revisar fallos' : 
-                    '💥 Múltiples fallos detectados'}\n\n` +
+                  `${percentage === 100 ? '🎉 ¡TODOS LOS TESTS PASARON!' :
+                    percentage >= 75 ? '⚠️ La mayoría pasaron, revisar fallos' :
+                      '💥 Múltiples fallos detectados'}\n\n` +
                   '🔍 Revisa la consola para detalles completos de cada test.',
                   [{ text: 'OK', style: 'default' }]
                 );
