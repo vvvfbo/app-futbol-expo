@@ -229,9 +229,21 @@ export default function PerfilScreen() {
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: Colors.info }]}
             onPress={async () => {
+              console.log('🔥 BOTÓN VERIFICAR PRESIONADO!');
+              console.log('🔧 Función verificarDatos:', typeof verificarDatos);
+
               try {
                 console.log('🔍 Verificando datos guardados...');
+
+                if (!verificarDatos) {
+                  console.error('❌ verificarDatos no está disponible!');
+                  Alert.alert('❌ Error', 'Función verificarDatos no disponible');
+                  return;
+                }
+
                 const result = await verificarDatos();
+                console.log('📊 Resultado verificación:', result);
+
                 Alert.alert(
                   '🔍 Verificación de Datos',
                   result.success
