@@ -1429,7 +1429,7 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
 
       // Clear AsyncStorage one by one with error handling
       const keys = ['equipos', 'torneos', 'partidos', 'campos', 'clubes', 'amistosos'];
-      
+
       for (const key of keys) {
         try {
           await AsyncStorage.removeItem(key);
@@ -1454,7 +1454,7 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
 
     } catch (error) {
       console.error('❌ Error al limpiar los datos:', error);
-      
+
       // Even if there's an error, ensure state is clean
       try {
         setEquipos([]);
@@ -1466,7 +1466,7 @@ ${amistoso.goleadores && amistoso.goleadores.length > 0 ? '⚽ Goleadores:\n' + 
       } catch (stateError) {
         console.error('❌ Error reseteando estados:', stateError);
       }
-      
+
       // Don't throw error to prevent UI crashes
       console.log('🔄 Limpieza completada con advertencias');
     }

@@ -12,7 +12,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ConfiguracionScreen() {
   const { user, actualizarUsuario } = useAuth();
-  const { limpiarTodosLosDatos, recargarDatos, torneos, equipos, partidos } = useData();
+  const {
+    limpiarTodosLosDatos,
+    recargarDatos,
+    torneos,
+    equipos,
+    partidos,
+    crearClub,
+    crearEquipo,
+    crearTorneo,
+    crearPartidos,
+    crearAmistoso
+  } = useData();
   const { colors } = useTheme();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -99,13 +110,13 @@ export default function ConfiguracionScreen() {
               console.log('🧹 Iniciando limpieza desde configuración...');
               await limpiarTodosLosDatos();
               console.log('✅ Limpieza completada desde configuración');
-              
+
               Alert.alert(
-                'Datos Eliminados', 
+                'Datos Eliminados',
                 'Todos los datos han sido eliminados correctamente.\n\nLa aplicación mostrará datos de ejemplo hasta que crees nuevos contenidos.',
                 [
-                  { 
-                    text: 'OK', 
+                  {
+                    text: 'OK',
                     onPress: () => {
                       // Force reload of the screen
                       setTimeout(() => {
@@ -117,15 +128,15 @@ export default function ConfiguracionScreen() {
               );
             } catch (error) {
               console.error('❌ Error clearing data from UI:', error);
-              
+
               Alert.alert(
                 'Limpieza Completada',
                 'Los datos han sido eliminados. Si continúas viendo contenido anterior, reinicia la aplicación.',
                 [
                   { text: 'OK' },
-                  { 
-                    text: 'Recargar Datos', 
-                    onPress: () => recargarDatos() 
+                  {
+                    text: 'Recargar Datos',
+                    onPress: () => recargarDatos()
                   }
                 ]
               );
@@ -276,28 +287,93 @@ export default function ConfiguracionScreen() {
               // Importar el generador de datos
               const { DataGenerator } = await import('../utils/data-generator');
               const generator = new DataGenerator();
-              
+
               console.log('🎲 Generando datos de prueba...');
-              
-              // Generar dataset completo
+
+              // Generar datos temporales
               const data = generator.generateCompleteDataset();
-              
-              console.log(`✅ Generados: ${data.clubes.length} clubes, ${data.equipos.length} equipos, ${data.torneos.length} torneos`);
-              
+              console.log('📦 Datos generados, integrando en la aplicación...');
+
+              let clubesCreados = 0;
+              let equiposCreados = 0;
+              let torneosCreados = 0;
+              let partidosCreados = 0;
+              let amistososCreados = 0;
+
+              // Crear clubes
+              for (const clubData of data.clubes) {
+                try {
+                  const { id, fechaCreacion, ...clubSinId } = clubData;
+                  await crearClub({
+                    ...clubSinId,
+                    entrenadorId: user?.id || 'generated-user'
+                  });
+                  clubesCreados++;
+                } catch (error) {
+                  console.warn('⚠️ Error creando club:', error);
+                }
+              }
+
+              // Crear equipos
+              for (const equipoData of data.equipos) {
+                try {
+                  const { id, fechaCreacion, jugadores, ...equipoSinId } = equipoData;
+                  await crearEquipo({
+                    ...equipoSinId,
+                    entrenadorId: user?.id || 'generated-user',
+                    jugadores: jugadores.map(j => ({ ...j, equipoId: '' })) // Se asignará automáticamente
+                  });
+                  equiposCreados++;
+                } catch (error) {
+                  console.warn('⚠️ Error creando equipo:', error);
+                }
+              }
+
+              // Crear torneos
+              for (const torneoData of data.torneos) {
+                try {
+                  const { id, fechaCreacion, ...torneoSinId } = torneoData;
+                  await crearTorneo({
+                    ...torneoSinId,
+                    creadorId: user?.id || 'generated-user'
+                  });
+                  torneosCreados++;
+                } catch (error) {
+                  console.warn('⚠️ Error creando torneo:', error);
+                }
+              }
+
+              // Crear amistosos
+              for (const amistososData of data.amistosos) {
+                try {
+                  const { id, fechaCreacion, ...amistosoSinId } = amistososData;
+                  await crearAmistoso(amistosoSinId);
+                  amistososCreados++;
+                } catch (error) {
+                  console.warn('⚠️ Error creando amistoso:', error);
+                }
+              }
+
+              console.log(`✅ Integración completada: ${clubesCreados} clubes, ${equiposCreados} equipos, ${torneosCreados} torneos, ${amistososCreados} amistosos`);
+
+              // Recargar datos para mostrar los nuevos
+              await recargarDatos();
+
               Alert.alert(
-                '🎉 Datos Generados',
-                `Se han creado:\n• ${data.clubes.length} clubes deportivos\n• ${data.equipos.length} equipos\n• ${data.torneos.length} torneos\n• ${data.partidos.length} partidos\n• ${data.amistosos.length} amistosos\n\n¡Ya puedes probar todas las funcionalidades!`,
+                '🎉 Datos Generados e Integrados',
+                `Se han creado exitosamente:\n• ${clubesCreados} clubes deportivos\n• ${equiposCreados} equipos\n• ${torneosCreados} torneos\n• ${amistososCreados} amistosos\n\n¡Ya puedes explorar todas las funcionalidades con datos reales!`,
                 [
-                  { text: 'Explorar', onPress: () => router.push('/(tabs)/(torneos)/') },
+                  { text: 'Explorar Torneos', onPress: () => router.push('/(tabs)/(torneos)/') },
+                  { text: 'Ver Equipos', onPress: () => router.push('/(tabs)/(equipos)/') },
                   { text: 'OK' }
                 ]
               );
-              
+
             } catch (error) {
               console.error('❌ Error generating data:', error);
               Alert.alert(
                 'Error',
-                'No se pudieron generar los datos de prueba. Verifica que el generador esté disponible.'
+                `No se pudieron generar los datos de prueba: ${error instanceof Error ? error.message : 'Error desconocido'}`
               );
             } finally {
               setIsGenerating(false);
