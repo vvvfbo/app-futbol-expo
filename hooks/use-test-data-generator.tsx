@@ -59,7 +59,7 @@ export const useTestDataGenerator = () => {
                 if (data) {
                     try {
                         const parsed = JSON.parse(data);
-                        console.log(`📦 ${key}: ${parsed.length} elementos`);
+                        console.log(`✅ ${key}: ${parsed.length} elementos`);
                         totalDatos += parsed.length;
 
                         // Mostrar detalles de los primeros elementos
@@ -67,11 +67,37 @@ export const useTestDataGenerator = () => {
                             console.log(`  └ Primer elemento de ${key}:`, parsed[0].nombre || parsed[0].id);
                         }
                     } catch (parseError) {
-                        console.error(`❌ Error parseando ${key}:`, parseError);
+                        const errorMessage = parseError instanceof Error ? parseError.message : 'Error desconocido';
+                        console.error(`❌ ${key}: DATOS CORRUPTOS - ${errorMessage}`);
+                        console.error(`📄 Contenido crudo de ${key}:`, data.substring(0, 100) + '...');
+                        console.log(`🔧 Recomendación: Ejecutar limpieza de datos para eliminar ${key} corrupto`);
                     }
                 } else {
                     console.log(`📦 ${key}: No existe`);
                 }
+            }
+
+            // Verificar TODAS las claves para detectar más corrupción
+            console.log('🔍 === DIAGNÓSTICO COMPLETO DE ASYNCSTORAGE ===');
+            try {
+                const allKeys = await AsyncStorage.getAllKeys();
+                console.log(`📋 Total claves en AsyncStorage: ${allKeys.length}`);
+                
+                for (const key of allKeys) {
+                    const value = await AsyncStorage.getItem(key);
+                    if (value) {
+                        try {
+                            JSON.parse(value);
+                            console.log(`✅ ${key}: JSON válido`);
+                        } catch (error) {
+                            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+                            console.error(`❌ ${key}: JSON INVÁLIDO - ${errorMessage}`);
+                            console.log(`📄 Contenido: ${value.substring(0, 50)}...`);
+                        }
+                    }
+                }
+            } catch (allKeysError) {
+                console.error('❌ Error obteniendo todas las claves:', allKeysError);
             }
 
             // Verificar usuario actual
@@ -260,12 +286,60 @@ export const useTestDataGenerator = () => {
 
     const limpiarDatosPrueba = async () => {
         try {
-            console.log('🧹 Limpiando datos de prueba...');
-            // Aquí podrías implementar la limpieza si tienes funciones de eliminación
-            console.log('✅ Datos de prueba limpiados');
-            return { success: true };
+            console.log('🧹 === LIMPIEZA FORZADA DE ASYNCSTORAGE ===');
+            
+            // Lista de todas las claves que pueden tener datos corruptos
+            const keys = [
+                'clubes',
+                'equipos', 
+                'torneos',
+                'partidos',
+                'jugadores',
+                'test-key', // Esta es la clave corrupta detectada
+                'user-data',
+                'app-data'
+            ];
+
+            console.log('🔍 Limpiando claves:', keys);
+
+            for (const key of keys) {
+                try {
+                    console.log(`🗑️ Eliminando clave: ${key}`);
+                    await AsyncStorage.removeItem(key);
+                    console.log(`✅ Clave ${key} eliminada`);
+                } catch (keyError) {
+                    console.log(`⚠️ Error eliminando ${key}:`, keyError);
+                    // Continuar con las demás claves
+                }
+            }
+
+            // Limpiar TODAS las claves (método nuclear)
+            console.log('💣 Ejecutando limpieza nuclear de AsyncStorage...');
+            try {
+                const allKeys = await AsyncStorage.getAllKeys();
+                console.log('📋 Todas las claves encontradas:', allKeys);
+                
+                if (allKeys.length > 0) {
+                    await AsyncStorage.multiRemove(allKeys);
+                    console.log('🧨 TODAS las claves eliminadas');
+                }
+            } catch (nuclearError) {
+                console.error('💥 Error en limpieza nuclear:', nuclearError);
+            }
+
+            // Verificar limpieza
+            console.log('🔍 Verificando limpieza...');
+            const remainingKeys = await AsyncStorage.getAllKeys();
+            console.log('📄 Claves restantes:', remainingKeys);
+
+            console.log('✅ === LIMPIEZA COMPLETADA ===');
+            return { 
+                success: true, 
+                message: `Limpieza completada. ${keys.length} claves procesadas.`,
+                remainingKeys: remainingKeys.length
+            };
         } catch (error) {
-            console.error('❌ Error limpiando datos:', error);
+            console.error('❌ Error en limpieza:', error);
             return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
         }
     };
