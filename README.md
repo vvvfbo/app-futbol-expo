@@ -20,29 +20,46 @@ Aplicación completa para gestionar torneos de fútbol con cronómetro contextua
 - **Estilos**: React Native StyleSheet + Linear Gradients
 - **Iconos**: Lucide React Native + Expo Vector Icons
 
-## 📱 Instalación para Desarrollo
+## 📱 Instalación para Desarrollo (Linux / Cross‑Platform)
 
 ```bash
-# Instalar dependencias
-npm install
+# 1. Instalar dependencias
+npm ci
 
-# Desarrollo web local
-npm run start-web-local
+# 2. Iniciar entorno de desarrollo (Metro + QR Expo)
+npm run dev
 
-# Desarrollo móvil (Expo Go)
-npm run start-local
+# 3. Solo web
+npm run web
 
-# Build para producción web
-npm run build-web
+# 4. Type check y lint
+npm run typecheck
+npm run lint
+
+# 5. Tests
+npm test
+
+# 6. Build estático web (salida en dist/)
+npm run build:web
 ```
+
+Notas:
+- Usa Node 20 LTS.
+- Dist se genera con `expo export` (web static). Netlify publica `dist/`.
+- Para móvil instala Expo Go y escanea el QR del dev server.
 
 ## 🌐 Despliegue en Netlify
 
-Este proyecto está configurado para despliegue automático:
+Build configurado en `netlify.toml`:
+- Build Command: `npm run build:web`
+- Publish: `dist`
+- Node: 20
 
-- **Build Command**: `npm run build-web`
-- **Publish Directory**: `dist`
-- **Node Version**: 20
+Variables opcionales (añadir en panel si se requiere):
+```
+EXPO_NO_TELEMETRY=1
+CI=true
+```
 
 ## 📱 Instalación en iPhone
 
@@ -54,3 +71,7 @@ Este proyecto está configurado para despliegue automático:
 ---
 
 **Desarrollado con ❤️ usando Expo React Native**
+
+---
+### 🐧 Migración a Linux
+Ver `MIGRATION-LINUX.md` para pasos detallados de limpieza y preparación del entorno.

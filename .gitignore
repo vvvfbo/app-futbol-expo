@@ -41,3 +41,20 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 .vercel
+
+# Test coverage & reports (cleanup)
+coverage/
+*report*.json
+ui-overlap-report.json
+
+# Legacy local scripts / platform-specific helpers (cleaned from repo)
+*.bat
+*.ps1
+run-*.js
+execute-*.js
+setup-*.js
+test-*.js
+super-test-*.js
+verify-*.js
+simple-test*.js
+
