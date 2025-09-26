@@ -90,6 +90,32 @@ __tests__/             # Tests unitarios
 - Estadísticas individuales
 - Inscripción/desinscripción flexible
 
+## 🌐 Deployment
+
+### Para Web (Estático)
+```bash
+# Generar build web
+npm run build:web
+
+# El output estará en dist/ listo para cualquier hosting estático
+```
+
+### Opciones de Hosting
+- **Vercel**: `npx vercel --prod` (después del build)
+- **GitHub Pages**: Subir contenido de `dist/` 
+- **Firebase Hosting**: `firebase deploy`
+- **Cualquier hosting estático**: Subir carpeta `dist/`
+
+### Para Móvil
+```bash
+# Development
+npx expo start
+
+# Build para stores
+expo build:android
+expo build:ios
+```
+
 ## 📚 Documentación
 
 Ver la carpeta `docs/` para documentación detallada:
