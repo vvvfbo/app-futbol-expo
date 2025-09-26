@@ -1,16 +1,33 @@
 import CampoFormModal from '@/components/CampoFormModal';
+import ConfiguracionTorneoModal from '@/components/ConfiguracionTorneoModal';
 import DatePicker from '@/components/DatePicker';
 import LocationPicker from '@/components/LocationPicker';
 import { CATEGORIAS, CIUDADES, CONFIGURACION_POR_TIPO, TIPOS_FUTBOL } from '@/constants/categories';
 import Colors from '@/constants/colors';
+import DiagnosticoEnVivo from '@/components/DiagnosticoEnVivo';
+import DiagnosticoMejorado from '@/components/DiagnosticoMejorado';
+import { SuperLayoutStyles } from '@/constants/super-styles';
+import SuperButton from '@/components/SuperButton';
+import SuperCard from '@/components/SuperCard';
+import SuperHeader from '@/components/SuperHeader';
 import { useAuth } from '@/hooks/auth-context';
 import { useData } from '@/hooks/data-context';
-import { Categoria, TipoFutbol, TipoTorneo } from '@/types';
+import { Categoria, TipoFutbol, TipoTorneo, Equipo } from '@/types';
+import { inicializarTorneo } from '@/utils/torneoMotor';
+import {
+  generarConfiguracionesTorneo, 
+  type ConfiguracionGrupos, 
+  distribuirEquiposEnGrupos,
+  generarPartidosParaGrupos,
+  obtenerConfiguracionRecomendada
+} from '@/utils/torneo-utils';
 import { router } from 'expo-router';
-import { ArrowLeft, MapPin, Plus, Tag, Target, Trophy, Users } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Plus, Tag, Target, Trophy, Users, Settings } from 'lucide-react-native';
 import { useState } from 'react';
+import { OptimizedErrorBoundary } from '@/components/OptimizedComponents';
 import {
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +37,14 @@ import {
 } from 'react-native';
 
 export default function CrearTorneoScreen() {
+  return (
+    <OptimizedErrorBoundary>
+      <CrearTorneoScreenContent />
+    </OptimizedErrorBoundary>
+  );
+}
+
+function CrearTorneoScreenContent() {
   const { user } = useAuth();
   const { equipos, crearTorneo, crearPartidos, campos, crearCampo } = useData();
   const [nombre, setNombre] = useState('');
@@ -34,6 +59,10 @@ export default function CrearTorneoScreen() {
   const [equiposSeleccionados, setEquiposSeleccionados] = useState<string[]>([]);
   const [campoSeleccionado, setCampoSeleccionado] = useState('');
   const [showCampoModal, setShowCampoModal] = useState(false);
+  const [showConfiguracionModal, setShowConfiguracionModal] = useState(false);
+  const [configuracionSeleccionada, setConfiguracionSeleccionada] = useState<ConfiguracionGrupos | null>(null);
+  const [showDiagnostico, setShowDiagnostico] = useState(false);
+  const [showDiagnosticoMejorado, setShowDiagnosticoMejorado] = useState(false);
 
   const toggleEquipo = (equipoId: string) => {
     setEquiposSeleccionados(prev =>
@@ -53,50 +82,10 @@ export default function CrearTorneoScreen() {
   };
 
   const generarCalendario = (equiposIds: string[], torneoId: string) => {
-    const partidos = [];
-    let jornada = 1;
-
-    // Sorteo aleatorio de equipos
-    const equiposSorteados = mezclarEquipos(equiposIds);
-
-    if (tipoTorneo === 'grupos' || tipoTorneo === 'grupos-eliminatorias') {
-      // Generar grupos automáticamente con equipos sorteados
-      const equiposPorGrupo = Math.ceil(equiposSorteados.length / Math.ceil(equiposSorteados.length / 4)); // Máximo 4 equipos por grupo
-      const grupos = [];
-
-      for (let i = 0; i < equiposSorteados.length; i += equiposPorGrupo) {
-        grupos.push(equiposSorteados.slice(i, i + equiposPorGrupo));
-      }
-
-      // Generar partidos para cada grupo
-      grupos.forEach((grupo, grupoIndex) => {
-        const nombreGrupo = String.fromCharCode(65 + grupoIndex); // A, B, C, etc.
-
-        // Round-robin dentro del grupo
-        for (let i = 0; i < grupo.length; i++) {
-          for (let j = i + 1; j < grupo.length; j++) {
-            const fecha = new Date();
-            fecha.setDate(fecha.getDate() + (jornada - 1) * 7);
-
-            partidos.push({
-              torneoId,
-              equipoLocalId: grupo[i],
-              equipoVisitanteId: grupo[j],
-              fecha: fecha.toISOString().split('T')[0],
-              hora: '16:00',
-              estado: 'Pendiente' as const,
-              jornada,
-              fase: 'grupos',
-              grupo: nombreGrupo,
-              campoId: campoSeleccionado
-            });
-
-            jornada++;
-          }
-        }
-      });
-    } else if (tipoTorneo === 'eliminatorias') {
-      // Generar eliminatorias directas con equipos ya sorteados
+    if (tipoTorneo === 'eliminatorias') {
+      // Para eliminatorias, usar lógica simple existente
+      const partidos = [];
+      const equiposSorteados = mezclarEquipos(equiposIds);
       let equiposRestantes = [...equiposSorteados];
       let ronda = 1;
 
@@ -108,7 +97,7 @@ export default function CrearTorneoScreen() {
 
         for (let i = 0; i < equiposRestantes.length; i += 2) {
           if (i + 1 < equiposRestantes.length) {
-            const fecha = new Date();
+            const fecha = new Date(fechaInicio);
             fecha.setDate(fecha.getDate() + (ronda - 1) * 7);
 
             partidosRonda.push({
@@ -120,7 +109,9 @@ export default function CrearTorneoScreen() {
               estado: 'Pendiente' as const,
               jornada: ronda,
               fase: faseName,
-              campoId: campoSeleccionado
+              campoId: campoSeleccionado,
+              goleadores: [],
+              eventos: []
             });
           }
         }
@@ -129,37 +120,59 @@ export default function CrearTorneoScreen() {
         equiposRestantes = equiposRestantes.filter((_, index) => index % 2 === 0);
         ronda++;
       }
+      return partidos;
+    } else {
+      // Para grupos, usar la configuración seleccionada
+      if (!configuracionSeleccionada) {
+        // Si no hay configuración, usar la recomendada
+        const configRecomendada = obtenerConfiguracionRecomendada(equiposIds.length);
+        const distribucion = distribuirEquiposEnGrupos(equiposIds, configRecomendada);
+        return generarPartidosParaGrupos(distribucion, configRecomendada, torneoId, fechaInicio, campoSeleccionado);
+      } else {
+        // Usar la configuración seleccionada por el usuario
+        const distribucion = distribuirEquiposEnGrupos(equiposIds, configuracionSeleccionada);
+        return generarPartidosParaGrupos(distribucion, configuracionSeleccionada, torneoId, fechaInicio, campoSeleccionado);
+      }
     }
-
-    return partidos;
   };
 
   const handleCrear = async () => {
+    console.log('🚀 INICIANDO CREACIÓN DE TORNEO...');
+    console.log('📋 Datos actuales:', {
+      nombre,
+      ciudad,
+      categoria,
+      tipoFutbol,
+      tipoTorneo,
+      equiposSeleccionados: equiposSeleccionados.length,
+      campoSeleccionado,
+      fechaInicio,
+      configuracionSeleccionada: configuracionSeleccionada?.descripcion
+    });
     if (!nombre) {
       Alert.alert('Error', 'Por favor ingresa el nombre del torneo');
       return;
     }
-
     if (equiposSeleccionados.length < 2) {
       Alert.alert('Error', 'Selecciona al menos 2 equipos');
       return;
     }
-
     if (tipoTorneo === 'grupos' && equiposSeleccionados.length < 4) {
       Alert.alert('Error', 'Para torneos de grupos necesitas al menos 4 equipos');
       return;
     }
-
     if (tipoTorneo === 'grupos-eliminatorias' && equiposSeleccionados.length < 8) {
       Alert.alert('Error', 'Para torneos de grupos + eliminatorias necesitas al menos 8 equipos');
       return;
     }
-
-    const configuracion = {
-      ...CONFIGURACION_POR_TIPO[tipoFutbol],
-      equiposPorGrupo: 4,
-      clasificadosPorGrupo: 2
-    };
+    if (!campoSeleccionado) {
+      Alert.alert('Error', 'Por favor selecciona un campo de juego o crea uno nuevo');
+      return;
+    }
+    if (!fechaInicio) {
+      Alert.alert('Error', 'Por favor selecciona la fecha de inicio del torneo');
+      return;
+    }
 
     // Convertir fecha DD/MM/YYYY a YYYY-MM-DD para guardar
     const convertirFecha = (fechaDDMMYYYY: string): string => {
@@ -167,26 +180,74 @@ export default function CrearTorneoScreen() {
       return `${year}-${month}-${day}`;
     };
 
-    const torneoId = await crearTorneo({
-      nombre,
-      ciudad,
-      categoria,
-      tipoFutbol,
-      fechaInicio: convertirFecha(fechaInicio),
-      equiposIds: equiposSeleccionados,
-      estado: 'En curso',
-      tipo: tipoTorneo,
-      maxEquipos: 16,
-      minEquipos: 2,
-      campoId: campoSeleccionado,
-      configuracion,
-      faseActual: tipoTorneo === 'eliminatorias' ? 'octavos' : 'grupos',
-      creadorId: user?.id || ''
-    });
+    // Obtener los equipos seleccionados como objetos
+    const equiposSeleccionadosObj: Equipo[] = equipos.filter(e => equiposSeleccionados.includes(e.id));
 
-    // Generar calendario automáticamente
-    const calendario = generarCalendario(equiposSeleccionados, torneoId);
-    await crearPartidos(calendario);
+    // Mapear tipoTorneo a FormatoTorneo
+    const formatoTorneoMap: Record<TipoTorneo, import('@/utils/torneoMotor').FormatoTorneo> = {
+      'grupos': 'grupos',
+      'eliminatorias': 'eliminacion',
+      'grupos-eliminatorias': 'eliminacion'
+    };
+
+
+    // 🛡️ VALIDACIÓN ROBUSTA AGREGADA
+    console.log('🔍 Validando datos antes de inicializar torneo:', {
+      formato: formatoTorneoMap[tipoTorneo],
+      equipos: equiposSeleccionadosObj.length,
+      configuracion: CONFIGURACION_POR_TIPO[tipoFutbol]
+    });
+    
+    if (!formatoTorneoMap[tipoTorneo]) {
+      throw new Error(`Formato de torneo no válido: ${tipoTorneo}`);
+    }
+    
+    if (equiposSeleccionadosObj.length < 2) {
+      throw new Error(`Insuficientes equipos: ${equiposSeleccionadosObj.length}`);
+    }
+    
+    // Construir el torneo usando el motor centralizado
+    const torneoObj = inicializarTorneo(
+      formatoTorneoMap[tipoTorneo],
+      equiposSeleccionadosObj,
+      {
+        ...CONFIGURACION_POR_TIPO[tipoFutbol],
+        equiposPorGrupo: 4,
+        clasificadosPorGrupo: 2
+      },
+      {
+        nombre,
+        ciudad,
+        categoria,
+        tipoFutbol,
+        fechaInicio: convertirFecha(fechaInicio),
+        estado: 'En curso',
+        maxEquipos: 16,
+        minEquipos: 2,
+        faseActual: tipoTorneo === 'eliminatorias' ? 'octavos' : 'grupos',
+        creadorId: user?.id || ''
+      }
+    );
+
+    // Guardar el torneo y obtener el ID
+    // Elimina id, fechaCreacion y partidosIniciales antes de pasar a crearTorneo
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, fechaCreacion, partidosIniciales, ...torneoSinIdFecha } = torneoObj;
+    const torneoId = await crearTorneo(torneoSinIdFecha);
+    console.log('🎯 TORNEO CREADO CON ID:', torneoId);
+
+    // Usar los partidos generados automáticamente por el motor
+    if (partidosIniciales && partidosIniciales.length > 0) {
+      // Asegurar que los partidos tengan el torneoId correcto y campo
+      const partidosConTorneoId = partidosIniciales.map(partido => ({
+        ...partido,
+        torneoId,
+        campoId: campoSeleccionado
+      }));
+      
+      await crearPartidos(partidosConTorneoId);
+      console.log('🏟️ PARTIDOS CREADOS:', partidosConTorneoId.length, 'partidos');
+    }
 
     Alert.alert(
       '🏆 Torneo Creado',
@@ -202,7 +263,6 @@ export default function CrearTorneoScreen() {
         {
           text: 'Crear Otro',
           onPress: () => {
-            // Resetear formulario para crear otro torneo
             setNombre('');
             setEquiposSeleccionados([]);
             setCampoSeleccionado('');
@@ -223,7 +283,14 @@ export default function CrearTorneoScreen() {
           <ArrowLeft size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Crear Torneo</Text>
-        <View style={styles.placeholder} />
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity onPress={() => setShowDiagnostico(true)} style={{ padding: 5 }}>
+            <Text style={{ color: Colors.primary, fontSize: 12 }}>🔍</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowDiagnosticoMejorado(true)} style={{ padding: 5 }}>
+            <Text style={{ color: Colors.secondary, fontSize: 12 }}>🚀</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView}>
@@ -236,6 +303,19 @@ export default function CrearTorneoScreen() {
             value={nombre}
             onChangeText={setNombre}
           />
+          {/* Mostrar opciones de configuración según el formato seleccionado */}
+          {(tipoTorneo === 'grupos' || tipoTorneo === 'grupos-eliminatorias') && (
+            <View style={{ marginVertical: 10 }}>
+              <Text style={styles.label}>Configuración de Grupos</Text>
+              {/* Aquí puedes agregar selectores para número de grupos, clasificados, etc. */}
+            </View>
+          )}
+          {tipoTorneo === 'eliminatorias' && (
+            <View style={{ marginVertical: 10 }}>
+              <Text style={styles.label}>Configuración de Eliminatoria</Text>
+              {/* Aquí puedes agregar opciones específicas para eliminatorias */}
+            </View>
+          )}
 
           <Text style={styles.label}>Ciudad</Text>
 
@@ -500,6 +580,34 @@ export default function CrearTorneoScreen() {
             </Text>
           </View>
 
+          {/* Configuración avanzada para todos los tipos de torneo */}
+          {equiposSeleccionados.length >= 2 && (
+            <TouchableOpacity
+              style={styles.configuracionButton}
+              onPress={() => {
+                console.log('🎯 Botón configuración presionado - equipos:', equiposSeleccionados.length, 'tipo:', tipoTorneo);
+                setShowConfiguracionModal(true);
+                console.log('🔓 Modal state actualizado a true');
+              }}
+            >
+              <Settings size={20} color={Colors.primary} />
+              <View style={styles.configuracionInfo}>
+                <Text style={styles.configuracionButtonText}>
+                  {tipoTorneo === 'eliminatorias' ? 
+                    'Configuración de Eliminatorias' : 
+                    'Configuración Avanzada de Grupos'
+                  }
+                </Text>
+                <Text style={styles.configuracionButtonSubtext}>
+                  {configuracionSeleccionada ? 
+                    configuracionSeleccionada.descripcion : 
+                    `${equiposSeleccionados.length} equipos - Ver opciones disponibles`
+                  }
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
           <View style={styles.buttons}>
             <TouchableOpacity
               style={[styles.button, styles.cancelButton]}
@@ -524,7 +632,8 @@ export default function CrearTorneoScreen() {
               const campoId = await crearCampo(campoData);
               setCampoSeleccionado(campoId);
               Alert.alert('Éxito', 'Campo creado correctamente');
-            } catch (error) {
+            } catch (error: any) {
+              console.error('❌ Error al crear campo:', error);
               Alert.alert('Error', 'No se pudo crear el campo');
             }
           }}
@@ -546,7 +655,61 @@ export default function CrearTorneoScreen() {
             onClose={() => setShowLocationPicker(false)}
           />
         )}
+
+        {showConfiguracionModal && (
+          <ConfiguracionTorneoModal
+            visible={showConfiguracionModal}
+            onClose={() => {
+              console.log('🚪 Cerrando modal de configuración');
+              setShowConfiguracionModal(false);
+            }}
+            numEquipos={equiposSeleccionados.length}
+            tipoTorneo={tipoTorneo}
+            onSeleccionarConfiguracion={(configuracion) => {
+              console.log('✅ Configuración seleccionada desde modal:', configuracion.descripcion);
+              setConfiguracionSeleccionada(configuracion);
+              setShowConfiguracionModal(false);
+              console.log('🔒 Modal cerrado y configuración guardada');
+            }}
+          />
+        )}
       </ScrollView>
+
+      {/* Modal de Diagnóstico */}
+      <Modal visible={showDiagnostico} animationType="slide">
+        <DiagnosticoEnVivo />
+        <TouchableOpacity 
+          onPress={() => setShowDiagnostico(false)}
+          style={{ 
+            position: 'absolute', 
+            top: 50, 
+            right: 20, 
+            backgroundColor: 'red', 
+            padding: 10, 
+            borderRadius: 5 
+          }}
+        >
+          <Text style={{ color: 'white' }}>✕ Cerrar</Text>
+        </TouchableOpacity>
+      </Modal>
+      
+      {/* Modal de Diagnóstico Mejorado */}
+      <Modal visible={showDiagnosticoMejorado} animationType="slide">
+        <DiagnosticoMejorado />
+        <TouchableOpacity 
+          onPress={() => setShowDiagnosticoMejorado(false)}
+          style={{ 
+            position: 'absolute', 
+            top: 50, 
+            right: 20, 
+            backgroundColor: 'red', 
+            padding: 10, 
+            borderRadius: 5 
+          }}
+        >
+          <Text style={{ color: 'white' }}>✕ Cerrar</Text>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -590,7 +753,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text,
     marginBottom: 8,
-    marginTop: 16,
+    marginTop: 8,
   },
   input: {
     backgroundColor: Colors.surface,
@@ -928,5 +1091,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     lineHeight: 16,
+  },
+  configuracionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 12,
+  },
+  configuracionInfo: {
+    flex: 1,
+  },
+  configuracionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  configuracionButtonSubtext: {
+    fontSize: 13,
+    color: Colors.textLight,
   },
 });

@@ -52,7 +52,43 @@ const CAMPOS_NOMBRES = [
     'Balaídos', 'Coliseum Alfonso Pérez', 'El Sadar', 'Vallecas'
 ];
 
+export type TipoDatosPrueba = 'clubes' | 'equipos' | 'torneos' | 'amistosos';
+
 export class DataGenerator {
+    private entrenadorId: string;
+
+    constructor(entrenadorId: string = 'test-user-123') {
+        this.entrenadorId = entrenadorId;
+    }
+
+    /**
+     * Genera datos de prueba según el tipo solicitado
+     * @param tipo Tipo de datos a generar
+     * @param cantidad Cantidad de entidades principales
+     */
+    generarDatos(tipo: TipoDatosPrueba, cantidad: number = 8): Club[] | Equipo[] | Torneo[] | PartidoAmistoso[] {
+        switch (tipo) {
+            case 'clubes':
+                return this.generateClubes(cantidad);
+            case 'equipos': {
+                const clubes = this.generateClubes(Math.max(2, Math.floor(cantidad/2)));
+                return this.generateEquipos(clubes, Math.max(1, Math.floor(cantidad/clubes.length)));
+            }
+            case 'torneos': {
+                const clubes = this.generateClubes(8);
+                const equipos = this.generateEquipos(clubes, 2);
+                const { torneos } = this.generateTorneos(equipos, cantidad);
+                return torneos;
+            }
+            case 'amistosos': {
+                const clubes = this.generateClubes(4);
+                const equipos = this.generateEquipos(clubes, 2);
+                return this.generateAmistosos(equipos, cantidad);
+            }
+            default:
+                return [];
+        }
+    }
     private getRandomElement<T>(array: T[]): T {
         return array[Math.floor(Math.random() * array.length)];
     }
@@ -92,7 +128,7 @@ export class DataGenerator {
                 telefono: `+34 ${Math.floor(Math.random() * 900 + 600)} ${Math.floor(Math.random() * 900 + 100)} ${Math.floor(Math.random() * 900 + 100)}`,
                 email: `info@${CLUBES_NOMBRES[i].toLowerCase().replace(/\s+/g, '')}.com`,
                 fechaCreacion: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-                entrenadorId: 'test-user-123',
+                entrenadorId: this.entrenadorId,
                 categorias: {
                     juvenil: { nombre: 'Juvenil', equipos: [] },
                     cadete: { nombre: 'Cadete', equipos: [] },
@@ -113,25 +149,27 @@ export class DataGenerator {
     // ⚽ Generar equipos para clubes
     generateEquipos(clubes: Club[], equiposPorClub: number = 2): Equipo[] {
         const equipos: Equipo[] = [];
-
+        // Todos los equipos serán de categoría 'Alevin' y tipoFutbol 'F7'
         clubes.forEach(club => {
             for (let i = 0; i < equiposPorClub; i++) {
-                const categoria = this.getRandomElement(Object.keys(EQUIPOS_NOMBRES));
-                const nombreCategoria = this.getRandomElement(EQUIPOS_NOMBRES[categoria as keyof typeof EQUIPOS_NOMBRES]);
+                const categoria: Categoria = 'Alevin';
+                const nombreCategoria = 'Alevín F7';
                 const colores = this.getRandomElement(COLORES_EQUIPOS);
+                const tipoFutbol: 'F7' = 'F7';
 
                 const equipo: Equipo = {
                     id: this.generateId(),
                     nombre: `${club.nombre} ${nombreCategoria}`,
                     clubId: club.id,
-                    categoria: this.getRandomElement(['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'] as Categoria[]),
+                    categoria,
+                    tipoFutbol,
                     colores: {
                         principal: colores.principal,
                         secundario: colores.secundario
                     },
                     escudo: '⚽',
-                    entrenadorId: 'test-user-123',
-                    jugadores: this.generateJugadores(18 + Math.floor(Math.random() * 8)), // 18-25 jugadores
+                    entrenadorId: this.entrenadorId,
+                    jugadores: this.generateJugadores(12 + Math.floor(Math.random() * 3)),
                     fechaCreacion: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString(),
                     ciudad: club.ubicacion.ciudad,
                     estadisticas: {
@@ -141,18 +179,13 @@ export class DataGenerator {
                         partidosPerdidos: 0,
                         golesFavor: 0,
                         golesContra: 0,
-                        torneosParticipados: 0,
                         torneosGanados: 0,
+                        torneosParticipados: 0,
                         amistososJugados: 0,
                         amistososGanados: 0
                     }
                 };
-
                 equipos.push(equipo);
-
-                // Agregar equipo a las categorías del club
-                const categoriaClub = Object.keys(club.categorias)[Math.floor(Math.random() * Object.keys(club.categorias).length)];
-                club.categorias[categoriaClub].equipos.push(equipo.id);
             }
         });
 
@@ -178,7 +211,7 @@ export class DataGenerator {
                     goles: Math.floor(Math.random() * 10),
                     asistencias: Math.floor(Math.random() * 8),
                     tarjetasAmarillas: Math.floor(Math.random() * 3),
-                    tarjetasRojas: Math.floor(Math.random() * 1),
+                    tarjetasRojas: Math.floor(Math.random() * 2),
                     porteriasCero: Math.floor(Math.random() * 5)
                 }
             };
@@ -190,20 +223,75 @@ export class DataGenerator {
 
     // 🏆 Generar torneos
     generateTorneos(equipos: Equipo[], cantidad: number = 3): { torneos: Torneo[], partidos: Partido[] } {
+        console.log(`🏆 === GENERANDO TORNEOS ===`);
+        console.log(`🏆 Equipos disponibles: ${equipos.length}`);
+        console.log(`🏆 Torneos solicitados: ${cantidad}`);
+        
         const torneos: Torneo[] = [];
         const allPartidos: Partido[] = [];
 
+        // Definir tipos de torneo a generar
+        const tiposTorneo: TipoTorneo[] = ['grupos', 'eliminatorias', 'grupos-eliminatorias'];
+        // Definir tipos de futbol válidos
+        const tiposFutbol: ('F11' | 'F7')[] = ['F11', 'F7'];
+        // Definir categorías válidas
+        const categorias: Categoria[] = ['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'];
+
+        // Debug: mostrar distribución de equipos
+        console.log(`🏆 Distribución de equipos por categoría y tipo:`);
+        categorias.forEach(cat => {
+            tiposFutbol.forEach(tipo => {
+                const count = equipos.filter(e => e.categoria === cat && e.tipoFutbol === tipo).length;
+                if (count > 0) {
+                    console.log(`  - ${cat} ${tipo}: ${count} equipos`);
+                }
+            });
+        });
+
         for (let i = 0; i < cantidad; i++) {
-            const tipoTorneo = this.getRandomElement(['grupos', 'eliminatorias', 'grupos-eliminatorias'] as TipoTorneo[]);
-            const equiposParticipantes = this.getRandomElements(equipos, 6 + Math.floor(Math.random() * 6)); // 6-12 equipos
+            // Rotar tipos de torneo para asegurar variedad
+            const tipoTorneo = tiposTorneo[i % tiposTorneo.length];
+            // Elegir tipoFutbol y categoría para este torneo
+            const tipoFutbol = tiposFutbol[i % tiposFutbol.length];
+            const categoria = categorias[i % categorias.length];
+
+            console.log(`🏆 Intentando crear torneo ${i + 1}/${cantidad}: ${categoria} ${tipoFutbol}`);
+
+            // Filtrar equipos que coincidan con la categoría y tipoFutbol
+            let equiposFiltrados = equipos.filter(e => e.categoria === categoria && e.tipoFutbol === tipoFutbol);
+            console.log(`🏆 Equipos filtrados para ${categoria} ${tipoFutbol}: ${equiposFiltrados.length}`);
+            
+            // Si no hay suficientes equipos con criterios estrictos, ser más flexible
+            if (equiposFiltrados.length < 4) {
+                console.log(`⚠️ Pocos equipos para ${categoria} ${tipoFutbol}, intentando solo por tipoFutbol...`);
+                equiposFiltrados = equipos.filter(e => e.tipoFutbol === tipoFutbol);
+                console.log(`🏆 Equipos filtrados solo por ${tipoFutbol}: ${equiposFiltrados.length}`);
+                
+                // Si aún no hay suficientes, usar todos los equipos
+                if (equiposFiltrados.length < 4) {
+                    console.log(`⚠️ Aún pocos equipos, usando todos los equipos disponibles...`);
+                    equiposFiltrados = equipos;
+                    console.log(`🏆 Total equipos disponibles: ${equiposFiltrados.length}`);
+                }
+            }
+            
+            // Si definitivamente no hay suficientes equipos, saltar este torneo
+            if (equiposFiltrados.length < 4) {
+                console.log(`❌ Saltando torneo ${i + 1}: solo ${equiposFiltrados.length} equipos disponibles (mínimo 4)`);
+                continue;
+            }
+
+            // Seleccionar entre 4 y 8 equipos para el torneo
+            const numEquipos = Math.min(8, Math.max(4, equiposFiltrados.length));
+            const equiposParticipantes = this.getRandomElements(equiposFiltrados, numEquipos);
 
             const torneo: Torneo = {
                 id: this.generateId(),
                 nombre: `${this.getRandomElement(['Liga', 'Copa', 'Torneo'])} ${this.getRandomElement(['Primavera', 'Otoño', 'Invierno', 'Verano'])} 2024`,
                 descripcion: `Competición ${tipoTorneo} con ${equiposParticipantes.length} equipos participantes`,
                 ciudad: this.getRandomElement(['Madrid', 'Barcelona', 'Sevilla', 'Valencia']),
-                categoria: this.getRandomElement(['Benjamin', 'Alevin', 'Infantil', 'Cadete', 'Juvenil', 'Senior'] as Categoria[]),
-                tipoFutbol: this.getRandomElement(['F11', 'F7', 'Sala']),
+                categoria,
+                tipoFutbol,
                 maxEquipos: 16,
                 minEquipos: 4,
                 tipo: tipoTorneo,
@@ -211,7 +299,7 @@ export class DataGenerator {
                 fechaInicio: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000).toISOString(),
                 fechaFin: new Date(Date.now() + Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
                 equiposIds: equiposParticipantes.map(e => e.id),
-                creadorId: 'test-user-123',
+                creadorId: this.entrenadorId,
                 fechaCreacion: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
                 configuracion: {
                     puntosVictoria: 3,
@@ -225,12 +313,18 @@ export class DataGenerator {
                 }
             };
 
+            console.log(`✅ Torneo creado: ${torneo.nombre} con ${equiposParticipantes.length} equipos`);
             torneos.push(torneo);
 
             // Generar partidos para el torneo
             const partidos = this.generatePartidos(torneo, equiposParticipantes);
+            console.log(`🎯 Partidos generados para el torneo: ${partidos.length}`);
             allPartidos.push(...partidos);
         }
+
+        console.log(`🏆 === RESULTADO GENERACIÓN TORNEOS ===`);
+        console.log(`🏆 Torneos generados: ${torneos.length}`);
+        console.log(`🏆 Partidos generados: ${allPartidos.length}`);
 
         return { torneos, partidos: allPartidos };
     }
@@ -418,13 +512,16 @@ export class DataGenerator {
     }
 
     // 🎲 Generar dataset completo
-    generateCompleteDataset(): {
+    generateCompleteDataset(entrenadorId?: string): {
         clubes: Club[];
         equipos: Equipo[];
         torneos: Torneo[];
         partidos: Partido[];
         amistosos: PartidoAmistoso[];
     } {
+        if (entrenadorId) {
+            this.entrenadorId = entrenadorId;
+        }
         console.log('🎲 Generando dataset completo de prueba...');
 
         // Generar clubes
@@ -435,8 +532,8 @@ export class DataGenerator {
         const equipos = this.generateEquipos(clubes, 2);
         console.log(`✅ ${equipos.length} equipos generados`);
 
-        // Generar torneos y partidos
-        const { torneos, partidos } = this.generateTorneos(equipos, 2);
+        // Generar torneos y partidos (aumentamos la cantidad)
+        const { torneos, partidos } = this.generateTorneos(equipos, 4);
         console.log(`✅ ${torneos.length} torneos generados`);
         console.log(`✅ ${partidos.length} partidos generados`);
 

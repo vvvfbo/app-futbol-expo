@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { 
@@ -139,8 +140,24 @@ export default function CrearDisponibilidadScreen() {
       console.log('✅ Disponibilidad creada con ID:', amistosoId);
       console.log('🏗️ === PROCESO COMPLETADO ===');
 
-      alert('Disponibilidad creada correctamente');
-      router.back();
+      Alert.alert(
+        'Disponibilidad Creada',
+        'Tu disponibilidad ha sido publicada correctamente',
+        [
+          {
+            text: 'Ver Detalle',
+            onPress: () => {
+              console.log('🎯 NAVEGANDO A DISPONIBILIDAD CREADA ID:', amistosoId);
+              router.replace(`/(tabs)/(amistosos)/${amistosoId}`);
+            }
+          },
+          {
+            text: 'Volver',
+            style: 'cancel',
+            onPress: () => router.back()
+          }
+        ]
+      );
     } catch (error) {
       console.error('❌ Error creando disponibilidad:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';

@@ -253,7 +253,7 @@ export default function LoginScreen() {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator size="small" color="white" />
                 ) : (
                   <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
                 )}
@@ -317,7 +317,7 @@ export default function LoginScreen() {
                       disabled={isResetting}
                     >
                       {isResetting ? (
-                        <ActivityIndicator color="white" size="small" />
+                        <ActivityIndicator size="small" color="white" />
                       ) : (
                         <Text style={styles.modalConfirmText}>Enviar</Text>
                       )}

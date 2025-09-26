@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { GlobalStyles } from '@/constants/styles';
+import { SuperLayoutStyles } from '@/constants/super-styles';
 import Colors from '@/constants/colors';
 
 interface ListTileProps {
@@ -13,7 +13,7 @@ interface ListTileProps {
   trailing?: React.ReactNode;
 }
 
-export default function ListTile({
+function ListTile({
   title,
   subtitle,
   onPress,
@@ -23,15 +23,15 @@ export default function ListTile({
 }: ListTileProps) {
   return (
     <TouchableOpacity
-      style={GlobalStyles.listTile}
+      style={SuperLayoutStyles.listTile}
       onPress={onPress}
       activeOpacity={0.7}
     >
       {icon && icon}
-      <View style={GlobalStyles.listTileContent}>
-        <Text style={GlobalStyles.listTileTitle}>{title}</Text>
+      <View style={SuperLayoutStyles.listTileContent}>
+        <Text style={SuperLayoutStyles.listTileTitle}>{title}</Text>
         {subtitle && (
-          <Text style={GlobalStyles.listTileSubtitle}>{subtitle}</Text>
+          <Text style={SuperLayoutStyles.listTileSubtitle}>{subtitle}</Text>
         )}
       </View>
       {trailing || (showArrow && (
@@ -40,3 +40,5 @@ export default function ListTile({
     </TouchableOpacity>
   );
 }
+
+export default memo(ListTile);

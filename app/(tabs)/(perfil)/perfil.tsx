@@ -6,8 +6,13 @@ import { router } from 'expo-router';
 import { Bell, LogOut, MessageCircle, Settings, Trophy, User, Users } from 'lucide-react-native';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEntrenadores } from '@/hooks/useEntrenadores';
+import PerfilEntrenador from '@/components/Entrenador/PerfilEntrenador';
+import HistorialPartidosEntrenador from '@/components/Entrenador/HistorialPartidosEntrenador';
+import ValoracionEntrenadorForm from '@/components/Entrenador/ValoracionEntrenadorForm';
 
 export default function PerfilScreen() {
+  const { entrenadores, agregarValoracion } = useEntrenadores();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { equipos, torneos } = useData();
@@ -17,6 +22,11 @@ export default function PerfilScreen() {
   const misTorneos = user?.rol === 'entrenador' ? torneos.filter(t =>
     t.equiposIds.some(equipoId => misEquipos.some(e => e.id === equipoId))
   ) : [];
+
+  // Buscar el perfil de entrenador si existe
+  const entrenadorPerfil = user?.rol === 'entrenador'
+    ? entrenadores.find(e => e.id === user.id)
+    : null;
 
   const totalUnreadChats = getTotalUnreadCount();
 
@@ -43,7 +53,7 @@ export default function PerfilScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <View style={styles.header}>
         <View style={styles.profileInfo}>
           <View style={styles.avatar}>
@@ -62,6 +72,17 @@ export default function PerfilScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Perfil de entrenador extendido */}
+        {user?.rol === 'entrenador' && entrenadorPerfil && (
+          <View style={{ marginBottom: 24 }}>
+            <PerfilEntrenador entrenador={entrenadorPerfil} />
+            <HistorialPartidosEntrenador historial={entrenadorPerfil.historialPartidos} />
+            <ValoracionEntrenadorForm
+              deEntrenadorId={user.id}
+              onSubmit={valoracion => agregarValoracion(entrenadorPerfil.id, valoracion)}
+            />
+          </View>
+        )}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Información Personal</Text>
           <View style={styles.infoCard}>

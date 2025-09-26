@@ -20,7 +20,12 @@ export default function EquipoDetailScreen() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
+  console.log('🔍 Buscando equipo con ID:', id);
+  console.log('🔍 Total equipos en lista:', equipos.length);
+  console.log('🔍 IDs de equipos disponibles:', equipos.map(e => e.id));
+  
   const equipo = equipos.find(e => e.id === id);
+  console.log('🔍 Equipo encontrado:', equipo ? '✅ SÍ' : '❌ NO');
   const [selectedCategoria, setSelectedCategoria] = useState(equipo?.categoria || CATEGORIAS[0]);
   const [selectedTipoFutbol, setSelectedTipoFutbol] = useState(equipo?.tipoFutbol || TIPOS_FUTBOL[0].value);
   

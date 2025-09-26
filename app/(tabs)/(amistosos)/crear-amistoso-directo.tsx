@@ -159,7 +159,15 @@ export default function CrearAmistosoDirectoScreen() {
         `Se ha creado el amistoso entre ${equipoLocal.nombre} y ${equipoVisitante.nombre} para el ${fecha} a las ${hora}.`,
         [
           {
-            text: 'OK',
+            text: 'Ver Detalle',
+            onPress: () => {
+              console.log('🎯 NAVEGANDO AL AMISTOSO CREADO ID:', amistosoId);
+              router.replace(`/(tabs)/(amistosos)/${amistosoId}`);
+            }
+          },
+          {
+            text: 'Volver',
+            style: 'cancel',
             onPress: () => router.back()
           }
         ]

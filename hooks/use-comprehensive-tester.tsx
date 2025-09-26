@@ -1,5 +1,6 @@
 import { Club, Equipo, Jugador } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OptimizedStorage } from '../utils/supercomputer-optimization';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './auth-context';
 import { useData } from './data-context';
 
@@ -30,12 +31,12 @@ export const useComprehensiveTester = () => {
         try {
             // Test de escritura
             console.log('📝 Probando escritura en AsyncStorage...');
-            await AsyncStorage.setItem('test-key', 'test-value');
+            await OptimizedStorage.setItem('test-key', 'test-value');
             console.log('✅ Escritura exitosa');
 
             // Test de lectura
             console.log('📖 Probando lectura de AsyncStorage...');
-            const value = await AsyncStorage.getItem('test-key');
+            const value = await OptimizedStorage.getItem('test-key');
             console.log('📖 Valor leído:', value);
 
             if (value === 'test-value') {
@@ -250,7 +251,7 @@ export const useComprehensiveTester = () => {
             const keys = ['clubes', 'equipos', 'jugadores', 'torneos', 'partidos'];
 
             for (const key of keys) {
-                const data = await AsyncStorage.getItem(key);
+                const data = await OptimizedStorage.getItem(key);
                 if (data) {
                     const parsedData = JSON.parse(data);
                     console.log(`📦 ${key}: ${parsedData.length} elementos`);

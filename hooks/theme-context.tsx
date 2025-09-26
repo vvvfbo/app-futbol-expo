@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OptimizedStorage } from '../utils/supercomputer-optimization';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
@@ -96,40 +97,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = '@app_theme';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setTheme] = useState<Theme>('light');
-
-    // Cargar tema guardado al inicio
-    useEffect(() => {
-        loadTheme();
-    }, []);
-
-    const loadTheme = async () => {
-        try {
-            const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-            if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-                setTheme(savedTheme);
-            }
-        } catch (error) {
-            console.log('Error loading theme:', error);
-        }
-    };
-
-    const saveTheme = async (newTheme: Theme) => {
-        try {
-            await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
-        } catch (error) {
-            console.log('Error saving theme:', error);
-        }
-    };
-
-    const toggleTheme = () => {
-        const newTheme = theme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
-        saveTheme(newTheme);
-    };
-
-    const isDarkMode = theme === 'dark';
-    const colors = theme === 'dark' ? darkTheme : lightTheme;
+    // Forzar siempre tema claro y desactivar dark mode
+    const theme: Theme = 'light';
+    const toggleTheme = () => {};
+    const isDarkMode = false;
+    const colors = lightTheme;
 
     return (
         <ThemeContext.Provider value={{

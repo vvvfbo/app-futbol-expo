@@ -367,7 +367,7 @@ export default function RegisterScreen() {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator size="small" color="white" />
                 ) : (
                   <Text style={styles.registerButtonText}>Registrarse</Text>
                 )}

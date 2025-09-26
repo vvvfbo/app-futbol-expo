@@ -1,3 +1,6 @@
+
+import { OptimizedStorage, PerformanceMonitor, SystemErrorHandler } from '../utils/supercomputer-optimization';
+import { useOptimizedDataContext } from './optimized-hooks';
 import { CAMPOS_MOCK, CONFIGURACION_DEFAULT } from '@/constants/categories';
 import { CampoFutbol, Clasificacion, Club, Equipo, EventoPartido, FiltroAmistosos, FiltroEquipos, FiltroTorneos, Jugador, Partido, PartidoAmistoso, Torneo } from '@/types';
 import createContextHook from '@nkzw/create-context-hook';
@@ -65,7 +68,7 @@ interface DataState {
   actualizarClub: (id: string, club: Partial<Club>) => Promise<void>;
   eliminarClub: (id: string) => Promise<void>;
   obtenerClubesPorEntrenador: (entrenadorId: string) => Club[];
-  agregarEquipoAClub: (clubId: string, equipoId: string, categoria: string) => Promise<void>;
+  agregarEquipoAClub: (clubId: string, equipoId: string, categoria: string, equipoObj?: Equipo) => Promise<void>;
   removerEquipoDeClub: (clubId: string, equipoId: string) => Promise<void>;
 
   // Amistosos
@@ -270,10 +273,15 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         return;
       }
 
+      console.log('💾 GUARDANDO', newEquipos.length, 'equipos');
+      console.log('💾 IDs a guardar:', newEquipos.map(e => e.id));
+
       const jsonString = JSON.stringify(newEquipos);
       await AsyncStorage.setItem('equipos', jsonString);
       setEquipos(newEquipos);
-      console.log('✅ Equipos saved successfully:', newEquipos.length);
+      
+      console.log('✅ Equipos guardados en AsyncStorage y estado actualizado');
+      console.log('✅ Estado actual equipos.length:', newEquipos.length);
     } catch (error) {
       console.error('❌ Error saving equipos:', error);
       throw error;
@@ -334,7 +342,6 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   const crearEquipo = useCallback(async (equipo: Omit<Equipo, 'id' | 'fechaCreacion'>): Promise<string> => {
     console.log('🏗️ === CREANDO EQUIPO ===');
     console.log('🏗️ Datos recibidos:', equipo);
-    console.log('🏗️ Equipos actuales:', equipos.length);
 
     const id = Date.now().toString();
     const nuevoEquipo: Equipo = {
@@ -344,14 +351,25 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       jugadores: equipo.jugadores || []
     };
 
+    console.log('🏗️ ID GENERADO:', id);
     console.log('🏗️ Nuevo equipo creado:', nuevoEquipo);
-    console.log('🏗️ Llamando saveEquipos con:', [...equipos, nuevoEquipo].length, 'equipos');
 
-    await saveEquipos([...equipos, nuevoEquipo]);
+    // ¡FIX CRÍTICO! Leer equipos directamente desde AsyncStorage para evitar problemas de concurrencia
+    const equiposData = await AsyncStorage.getItem('equipos');
+    const equiposActuales = equiposData ? parseJsonSafely(equiposData, 'Equipos') : [];
+    console.log('🏗️ Equipos actuales en AsyncStorage:', equiposActuales.length);
+    console.log('🏗️ IDs actuales:', equiposActuales.map(e => e.id));
 
-    console.log('🏗️ Equipo guardado correctamente, ID:', id);
+    const equiposActualizados = [...equiposActuales, nuevoEquipo];
+    console.log('🏗️ Llamando saveEquipos con:', equiposActualizados.length, 'equipos');
+    console.log('🏗️ IDs después de agregar:', equiposActualizados.map(e => e.id));
+
+    await saveEquipos(equiposActualizados);
+
+    console.log('✅ EQUIPO CREADO CON ID:', id);
+    console.log('🏗️ === PROCESO COMPLETADO ===');
     return id;
-  }, [equipos, saveEquipos]);
+  }, [saveEquipos, parseJsonSafely]);
 
   const actualizarEquipo = useCallback(async (id: string, equipoActualizado: Partial<Equipo>) => {
     console.log('🔄 === ACTUALIZANDO EQUIPO ===');
@@ -448,6 +466,22 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
   }, [equipos]);
 
   const crearTorneo = useCallback(async (torneo: Omit<Torneo, 'id' | 'fechaCreacion'>): Promise<string> => {
+
+    console.log('📝 Creando torneo:', { 
+      nombre: torneo.nombre, 
+      equipos: torneo.equiposIds?.length || 0,
+      tipo: torneo.tipo 
+    });
+    
+    // Validación extra antes de guardar
+    if (!torneo.nombre?.trim()) {
+      throw new Error('Nombre del torneo es requerido');
+    }
+    
+    if (!torneo.equiposIds || torneo.equiposIds.length < 2) {
+      throw new Error('Se requieren al menos 2 equipos');
+    }
+    
     const id = Date.now().toString();
     const nuevoTorneo: Torneo = {
       ...torneo,
@@ -456,9 +490,28 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       equiposIds: torneo.equiposIds || [],
       configuracion: torneo.configuracion || CONFIGURACION_DEFAULT
     };
-    await saveTorneos([...torneos, nuevoTorneo]);
+
+    // ¡FIX CRÍTICO! Leer torneos directamente desde AsyncStorage para evitar problemas de concurrencia
+    const torneosData = await AsyncStorage.getItem('torneos');
+    const torneosActuales = torneosData ? parseJsonSafely(torneosData, 'Torneos') : [];
+    
+    await saveTorneos([...torneosActuales, nuevoTorneo]);
+
+    console.log('✅ Torneo guardado exitosamente:', { id, nombre: nuevoTorneo.nombre });
+    
+    // Verificar que se guardó correctamente
+    const verificacion = await AsyncStorage.getItem('torneos');
+    const torneosVerificacion = verificacion ? parseJsonSafely(verificacion, 'Torneos verificación') : [];
+    const torneoGuardado = torneosVerificacion.find((t: any) => t.id === id);
+    
+    if (!torneoGuardado) {
+      console.error('⚠️ Torneo no encontrado después de guardar');
+    } else {
+      console.log('✅ Verificación exitosa: torneo encontrado en storage');
+    }
+    
     return id;
-  }, [torneos, saveTorneos]);
+  }, [saveTorneos, parseJsonSafely]);
 
   const actualizarTorneo = useCallback(async (id: string, torneoActualizado: Partial<Torneo>) => {
     const nuevosTorneos = torneos.map(t =>
@@ -1060,9 +1113,14 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       fechaCreacion: new Date().toISOString(),
       categorias: club.categorias || {}
     };
-    await saveClubes([...clubes, nuevoClub]);
+
+    // ¡FIX CRÍTICO! Leer clubes directamente desde AsyncStorage para evitar problemas de concurrencia
+    const clubesData = await AsyncStorage.getItem('clubes');
+    const clubesActuales = clubesData ? parseJsonSafely(clubesData, 'Clubes') : [];
+    
+    await saveClubes([...clubesActuales, nuevoClub]);
     return id;
-  }, [clubes, saveClubes]);
+  }, [saveClubes, parseJsonSafely]);
 
   const actualizarClub = useCallback(async (id: string, clubActualizado: Partial<Club>) => {
     const nuevosClubes = clubes.map(c =>
@@ -1080,7 +1138,10 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     return clubes.filter(c => c.entrenadorId === entrenadorId);
   }, [clubes]);
 
-  const agregarEquipoAClub = useCallback(async (clubId: string, equipoId: string, categoria: string) => {
+  /**
+   * Agrega un equipo a un club, usando el objeto equipo si se proporciona (para evitar problemas de sincronización de estado).
+   */
+  const agregarEquipoAClub = useCallback(async (clubId: string, equipoId: string, categoria: string, equipoObj?: Equipo) => {
     console.log('🏛️ === AGREGANDO EQUIPO AL CLUB ===');
     console.log('🏛️ Club ID:', clubId);
     console.log('🏛️ Equipo ID:', equipoId);
@@ -1100,7 +1161,13 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       throw new Error(`Club con ID ${clubId} no encontrado`);
     }
 
-    const equipo = equipos.find(e => e.id === equipoId);
+
+    // Buscar el equipo en el array, o usar el objeto proporcionado
+    let equipo = equipos.find(e => e.id === equipoId);
+    if (!equipo && equipoObj) {
+      console.warn('⚠️ Equipo no encontrado en memoria, usando objeto proporcionado');
+      equipo = equipoObj;
+    }
     if (!equipo) {
       console.error('❌ Equipo no encontrado:', equipoId);
       console.error('❌ Equipos disponibles:', equipos.map(e => ({ id: e.id, nombre: e.nombre })));
@@ -1209,7 +1276,6 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
     try {
       console.log('🤝 === CREANDO AMISTOSO EN DATA-CONTEXT ===');
       console.log('🤝 Datos recibidos:', JSON.stringify(amistoso, null, 2));
-      console.log('🤝 Estado actual de amistosos:', amistosos.length);
 
       const id = Date.now().toString();
       const nuevoAmistoso: PartidoAmistoso = {
@@ -1218,14 +1284,22 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
         fechaCreacion: new Date().toISOString()
       };
 
+      console.log('🤝 ID GENERADO:', id);
       console.log('🤝 Nuevo amistoso creado:', JSON.stringify(nuevoAmistoso, null, 2));
 
-      const nuevosAmistosos = [...amistosos, nuevoAmistoso];
+      // ¡FIX CRÍTICO! Leer amistosos directamente desde AsyncStorage para evitar problemas de concurrencia
+      const amistososData = await AsyncStorage.getItem('amistosos');
+      const amistososActuales = amistososData ? parseJsonSafely(amistososData, 'Amistosos') : [];
+      console.log('🤝 Amistosos actuales en AsyncStorage:', amistososActuales.length);
+      console.log('🤝 IDs actuales:', amistososActuales.map(a => a.id));
+
+      const nuevosAmistosos = [...amistososActuales, nuevoAmistoso];
       console.log('🤝 Total amistosos después de agregar:', nuevosAmistosos.length);
+      console.log('🤝 IDs después de agregar:', nuevosAmistosos.map(a => a.id));
 
       await saveAmistosos(nuevosAmistosos);
 
-      console.log('✅ Amistoso guardado exitosamente con ID:', id);
+      console.log('✅ AMISTOSO CREADO CON ID:', id);
       console.log('🤝 === PROCESO COMPLETADO ===');
 
       return id;
@@ -1233,7 +1307,7 @@ export const [DataProvider, useData] = createContextHook<DataState>(() => {
       console.error('❌ Error en crearAmistoso:', error);
       throw error;
     }
-  }, [amistosos, saveAmistosos]);
+  }, [saveAmistosos, parseJsonSafely]);
 
   const actualizarAmistoso = useCallback(async (id: string, amistosoActualizado: Partial<PartidoAmistoso>) => {
     const nuevosAmistosos = amistosos.map(a =>

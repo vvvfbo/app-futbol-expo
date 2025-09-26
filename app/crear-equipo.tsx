@@ -119,15 +119,14 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
 
       console.log('🏗️ Equipo completo a crear:', equipoCompleto);
 
+
+      // Crear equipo y agregarlo al club usando el objeto recién creado para evitar problemas de sincronización
       const equipoId = await crearEquipo(equipoCompleto);
-
       console.log('✅ Equipo creado con ID:', equipoId);
-
-      // Agregar equipo al club
       if (equipoId) {
         console.log('🔗 Agregando equipo al club...');
         try {
-          await agregarEquipoAClub(clubId, equipoId, categoriaSeleccionada);
+          await agregarEquipoAClub(clubId, equipoId, categoriaSeleccionada, { ...equipoCompleto, id: equipoId, fechaCreacion: new Date().toISOString(), jugadores: equipoCompleto.jugadores || [] });
           console.log('✅ Equipo agregado al club exitosamente');
         } catch (clubError) {
           console.error('❌ Error agregando equipo al club:', clubError);
@@ -376,7 +375,7 @@ function CrearEquipoContent({ clubId, categoria }: { clubId: string; categoria: 
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator size="small" color="white" />
               ) : (
                 <Text style={styles.createButtonText}>
                   Agregar al Club

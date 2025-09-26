@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Image
 } from 'react-native';
 import { Trophy, Calendar, Clock, Edit3 } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/hooks/theme-context';
 import { Partido, Equipo } from '@/types';
 
 interface CuadroEliminatoriasProps {
@@ -46,6 +46,8 @@ export default function CuadroEliminatorias({
   onEditPartido,
   isEditable = false
 }: CuadroEliminatoriasProps) {
+  const { colors } = useTheme();
+
   const getEquipoById = (id: string): Equipo | undefined => {
     return equipos.find(e => e.id === id);
   };
@@ -125,19 +127,19 @@ export default function CuadroEliminatorias({
     const visitanteGanador = partido.ganador?.id === partido.equipoVisitante?.id;
 
     return (
-      <View key={partido.id} style={styles.partidoContainer}>
+      <View key={partido.id} style={[styles.partidoContainer, { backgroundColor: colors.surface, borderColor: colors.border }] }>
         <View style={styles.partidoHeader}>
           {partido.fecha && partido.hora && (
             <View style={styles.fechaHora}>
-              <Calendar size={12} color={Colors.textLight} />
-              <Text style={styles.fechaText}>
+              <Calendar size={12} color={colors.textSecondary} />
+              <Text style={[styles.fechaText, { color: colors.textSecondary }] }>
                 {new Date(partido.fecha).toLocaleDateString('es-ES', { 
                   day: '2-digit', 
                   month: '2-digit' 
                 })}
               </Text>
-              <Clock size={12} color={Colors.textLight} />
-              <Text style={styles.horaText}>{partido.hora}</Text>
+              <Clock size={12} color={colors.textSecondary} />
+              <Text style={[styles.horaText, { color: colors.textSecondary }] }>{partido.hora}</Text>
             </View>
           )}
           {isEditable && onEditPartido && (
@@ -145,7 +147,7 @@ export default function CuadroEliminatorias({
               style={styles.editButton}
               onPress={() => onEditPartido(partido.id)}
             >
-              <Edit3 size={14} color={Colors.primary} />
+              <Edit3 size={14} color={colors.primary} />
             </TouchableOpacity>
           )}
         </View>
@@ -191,9 +193,9 @@ export default function CuadroEliminatorias({
   if (fasesConPartidos.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Trophy size={48} color={Colors.textLight} />
-        <Text style={styles.emptyTitle}>No hay eliminatorias</Text>
-        <Text style={styles.emptySubtitle}>
+        <Trophy size={48} color={colors.textSecondary} />
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>No hay eliminatorias</Text>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }] }>
           Las eliminatorias se generarán automáticamente cuando termine la fase de grupos
         </Text>
       </View>
@@ -201,10 +203,10 @@ export default function CuadroEliminatorias({
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Trophy size={24} color={Colors.primary} />
-        <Text style={styles.title}>Cuadro de Eliminatorias</Text>
+        <Trophy size={24} color={colors.primary} />
+        <Text style={[styles.title, { color: colors.text }]}>Cuadro de Eliminatorias</Text>
       </View>
 
       {fasesConPartidos.map(fase => (
@@ -238,7 +240,6 @@ export default function CuadroEliminatorias({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -249,7 +250,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.text,
   },
   emptyContainer: {
     flex: 1,
@@ -258,17 +258,15 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-    marginTop: 16,
-    marginBottom: 8,
+  fontSize: 18,
+  fontWeight: '600',
+  marginTop: 16,
+  marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textLight,
-    textAlign: 'center',
-    lineHeight: 20,
+  fontSize: 14,
+  textAlign: 'center',
+  lineHeight: 20,
   },
   faseContainer: {
     marginBottom: 16,
@@ -281,31 +279,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   faseTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
+  fontSize: 15,
+  fontWeight: '600',
   },
   faseBadge: {
-    backgroundColor: Colors.primary + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+  paddingHorizontal: 8,
+  paddingVertical: 3,
+  borderRadius: 10,
   },
   faseBadgeText: {
-    fontSize: 11,
-    color: Colors.primary,
-    fontWeight: '500',
+  fontSize: 11,
+  fontWeight: '500',
   },
   partidosGrid: {
     paddingHorizontal: 12,
     gap: 8,
   },
   partidoContainer: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  borderRadius: 8,
+  padding: 12,
+  borderWidth: 1,
   },
   partidoHeader: {
     flexDirection: 'row',
@@ -320,11 +313,9 @@ const styles = StyleSheet.create({
   },
   fechaText: {
     fontSize: 11,
-    color: Colors.textLight,
   },
   horaText: {
     fontSize: 11,
-    color: Colors.textLight,
   },
   editButton: {
     padding: 4,
@@ -335,29 +326,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   equipoContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    borderRadius: 6,
-    padding: 8,
-    gap: 6,
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 6,
+  padding: 8,
+  gap: 6,
   },
   equipoGanador: {
-    backgroundColor: Colors.primary + '10',
-    borderWidth: 1,
-    borderColor: Colors.primary,
+  borderWidth: 1,
   },
   equipoVacio: {
-    backgroundColor: Colors.border + '30',
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: Colors.border,
+  borderStyle: 'dashed',
+  borderWidth: 1,
   },
   equipoVacioText: {
-    fontSize: 11,
-    color: Colors.textLight,
-    fontStyle: 'italic',
+  fontSize: 11,
+  fontStyle: 'italic',
   },
   escudoSmall: {
     width: 20,
@@ -365,13 +350,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   equipoNombre: {
-    fontSize: 13,
-    color: Colors.text,
-    fontWeight: '500',
-    flex: 1,
+  fontSize: 13,
+  fontWeight: '500',
+  flex: 1,
   },
   equipoNombreGanador: {
-    color: Colors.primary,
     fontWeight: '600',
   },
   resultado: {
@@ -381,14 +364,12 @@ const styles = StyleSheet.create({
     minWidth: 35,
   },
   marcador: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
+  fontSize: 14,
+  fontWeight: '700',
   },
   vs: {
-    fontSize: 11,
-    color: Colors.textLight,
-    fontWeight: '500',
+  fontSize: 11,
+  fontWeight: '500',
   },
   estadoContainer: {
     alignItems: 'center',
@@ -397,32 +378,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
-    backgroundColor: Colors.border + '30',
   },
-  estadoJugado: {
-    backgroundColor: Colors.success + '20',
-  },
-  estadoEnCurso: {
-    backgroundColor: Colors.warning + '20',
-  },
-  estadoPendiente: {
-    backgroundColor: Colors.textLight + '20',
-  },
+  estadoJugado: {},
+  estadoEnCurso: {},
+  estadoPendiente: {},
   estadoText: {
     fontSize: 11,
-    color: Colors.textLight,
     fontWeight: '500',
   },
-  estadoTextJugado: {
-    color: Colors.success,
-  },
+  estadoTextJugado: {},
   footer: {
     padding: 12,
     alignItems: 'center',
   },
   footerText: {
     fontSize: 11,
-    color: Colors.textLight,
     textAlign: 'center',
     fontStyle: 'italic',
   },

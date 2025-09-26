@@ -53,7 +53,14 @@ export default function DetalleAmistosoScreen() {
   const [mensaje, setMensaje] = useState('');
 
   const amistoso = useMemo(() => {
-    return amistosos.find(a => a.id === id);
+    console.log('🔍 Buscando amistoso con ID:', id);
+    console.log('🔍 Total amistosos en lista:', amistosos.length);
+    console.log('🔍 IDs de amistosos disponibles:', amistosos.map(a => a.id));
+    
+    const encontrado = amistosos.find(a => a.id === id);
+    console.log('🔍 Amistoso encontrado:', encontrado ? '✅ SÍ' : '❌ NO');
+    
+    return encontrado;
   }, [amistosos, id]);
 
   const equipoLocal = useMemo(() => {

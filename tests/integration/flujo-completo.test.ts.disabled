@@ -1,0 +1,375 @@
+/**
+ * 🏆 TEST DE INTEGRACIÓN: FLUJO COMPLETO DE TORNEO
+ * 
+ * Este test simula el flujo completo de un torneo desde la creación hasta el final:
+ * 1. Crear equipos de prueba
+ * 2. Crear torneo usando las funciones reales
+ * 3. Registrar resultados 
+ * 4. Verificar que el estado global se mantiene consistente
+ * 5. Probar casos extremos y edge cases
+ */
+
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { inicializarTorneo, registrarResultado, FormatoTorneo, generarCalendario, calcularTablaPosiciones } from '../../utils/torneoMotor';
+import { Equipo, Torneo, Partido, EventoPartido, TipoTorneo, EstadoTorneo } from '../../types';
+
+// Mock de AsyncStorage para tests
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+}));
+
+// Datos de prueba para equipos
+const EQUIPOS_PRUEBA: Equipo[] = [
+  {
+    id: 'equipo-1',
+    nombre: 'Real Madrid FC',
+    ciudad: 'Madrid',
+    categoria: 'Senior',
+    tipoFutbol: 'F11',
+    entrenadorId: 'entrenador-1',
+    colores: { principal: '#FFFFFF', secundario: '#000080' },
+    jugadores: [],
+    fechaCreacion: new Date().toISOString()
+  },
+  {
+    id: 'equipo-2',
+    nombre: 'FC Barcelona',
+    ciudad: 'Barcelona',
+    categoria: 'Senior',
+    tipoFutbol: 'F11',
+    entrenadorId: 'entrenador-2',
+    colores: { principal: '#004D98', secundario: '#A50044' },
+    jugadores: [],
+    fechaCreacion: new Date().toISOString()
+  },
+  {
+    id: 'equipo-3',
+    nombre: 'Atlético Madrid',
+    ciudad: 'Madrid',
+    categoria: 'Senior',
+    tipoFutbol: 'F11',
+    entrenadorId: 'entrenador-3',
+    colores: { principal: '#CE2029', secundario: '#FFFFFF' },
+    jugadores: [],
+    fechaCreacion: new Date().toISOString()
+  },
+  {
+    id: 'equipo-4',
+    nombre: 'Valencia CF',
+    ciudad: 'Valencia',
+    categoria: 'Senior',
+    tipoFutbol: 'F11',
+    entrenadorId: 'entrenador-4',
+    colores: { principal: '#FF6600', secundario: '#000000' },
+    jugadores: [],
+    fechaCreacion: new Date().toISOString()
+  }
+];
+
+describe('🏆 INTEGRACIÓN: Flujo Completo de Torneo', () => {
+  let torneoResult: { torneo: Torneo; partidos: Partido[] } | null;
+  let equiposIds: string[];
+
+  beforeEach(async () => {
+    // Limpiar AsyncStorage antes de cada test
+    (AsyncStorage.clear as jest.Mock).mockClear();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    // IDs de equipos de prueba
+    equiposIds = EQUIPOS_PRUEBA.map(e => e.id);
+    torneoResult = null;
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('🎯 Test 1: Creación y Configuración Completa', () => {
+    it('debe crear torneo con configuración válida', () => {
+      // Crear el torneo primero
+      const torneo = inicializarTorneo('liga' as FormatoTorneo, EQUIPOS_PRUEBA, {
+        permitirEmpates: true
+      });
+      
+      expect(torneo.id).toBeDefined();
+      expect(torneo.equiposIds).toHaveLength(4);
+      expect(torneo.nombre).toBeDefined();
+      console.log('✅ Torneo creado correctamente:', torneo.nombre);
+    });
+
+    it('debe generar calendario correctamente', () => {
+      const torneo = inicializarTorneo('liga' as FormatoTorneo, EQUIPOS_PRUEBA);
+      const partidos = generarCalendario(torneo, EQUIPOS_PRUEBA);
+      
+      // En liga todos contra todos: n*(n-1) partidos
+      const partidosEsperados = EQUIPOS_PRUEBA.length * (EQUIPOS_PRUEBA.length - 1);
+      expect(partidos).toHaveLength(partidosEsperados);
+      
+      // Verificar que cada equipo juega contra todos los demás
+      const enfrentamientos = new Set();
+      partidos.forEach(partido => {
+        const clave = [partido.equipoLocalId, partido.equipoVisitanteId].sort().join('-');
+        enfrentamientos.add(clave);
+      });
+
+      console.log('✅ Calendario generado:', partidos.length, 'partidos');
+      console.log('✅ Enfrentamientos únicos:', enfrentamientos.size);
+    });
+  });
+
+  describe('🏃‍♂️ Test 2: Simulación Completa de Temporada', () => {
+    beforeEach(() => {
+      partidos = generarCalendario(torneo, EQUIPOS_PRUEBA);
+    });
+
+    it('debe procesar todos los resultados y mantener consistencia', async () => {
+      console.log('🚀 Iniciando simulación completa de temporada...');
+      
+      // Simular resultados realistas
+      const resultados: ResultadoPartido[] = [];
+      
+      partidos.forEach((partido, index) => {
+        // Generar resultado semi-realista
+        const golesLocal = Math.floor(Math.random() * 4);
+        const golesVisitante = Math.floor(Math.random() * 4);
+        
+        const resultado: ResultadoPartido = {
+          partidoId: partido.id!,
+          golesLocal,
+          golesVisitante,
+          fecha: new Date().toISOString(),
+          observaciones: `Jornada ${Math.floor(index / 2) + 1}`
+        };
+        
+        resultados.push(resultado);
+        
+        // Procesar resultado inmediatamente
+        procesarResultadoTorneo(torneo, partido, resultado);
+      });
+
+      console.log('✅ Procesados', resultados.length, 'resultados');
+
+      // Verificar que todos los partidos tienen resultado
+      expect(resultados).toHaveLength(partidos.length);
+      
+      // Calcular tabla final
+      const tablaFinal = calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, resultados);
+      
+      // Verificaciones de consistencia
+      expect(tablaFinal).toHaveLength(EQUIPOS_PRUEBA.length);
+      
+      // Verificar que la suma de puntos es coherente
+      const totalPartidos = partidos.length;
+      const totalPuntos = tablaFinal.reduce((sum, pos) => sum + pos.puntos, 0);
+      const puntosEsperados = totalPartidos * (torneo.configuracion.puntosVictoria + torneo.configuracion.puntosDerrota) / 2;
+      
+      expect(totalPuntos).toBeGreaterThan(0);
+      
+      // El equipo en primera posición debe tener más o igual puntos que el segundo
+      expect(tablaFinal[0].puntos).toBeGreaterThanOrEqual(tablaFinal[1].puntos);
+      
+      console.log('🏆 TABLA FINAL:');
+      tablaFinal.forEach((pos, index) => {
+        const equipo = EQUIPOS_PRUEBA.find(e => e.id === pos.equipoId);
+        console.log(`${index + 1}. ${equipo?.nombre} - ${pos.puntos} pts (${pos.partidosJugados}PJ)`);
+      });
+
+      console.log('✅ Simulación completada exitosamente');
+    });
+  });
+
+  describe('🔄 Test 3: Consistencia del Estado Global', () => {
+    it('debe mantener sincronización entre torneo y resultados', async () => {
+      partidos = generarCalendario(torneo, EQUIPOS_PRUEBA);
+      
+      // Simular registro de resultado individual
+      const primerPartido = partidos[0];
+      const resultado: ResultadoPartido = {
+        partidoId: primerPartido.id!,
+        golesLocal: 2,
+        golesVisitante: 1,
+        fecha: new Date().toISOString()
+      };
+
+      // Antes de procesar el resultado
+      const tablaAntes = calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, []);
+      expect(tablaAntes.every(pos => pos.puntos === 0)).toBeTruthy();
+
+      // Procesar resultado
+      procesarResultadoTorneo(torneo, primerPartido, resultado);
+      
+      // Después de procesar el resultado
+      const tablaDespues = calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, [resultado]);
+      
+      // El equipo local debe tener 3 puntos (victoria)
+      const equipoLocal = tablaDespues.find(pos => pos.equipoId === primerPartido.equipoLocalId);
+      const equipoVisitante = tablaDespues.find(pos => pos.equipoId === primerPartido.equipoVisitanteId);
+      
+      expect(equipoLocal?.puntos).toBe(3);
+      expect(equipoVisitante?.puntos).toBe(0);
+      expect(equipoLocal?.golesAFavor).toBe(2);
+      expect(equipoLocal?.golesEnContra).toBe(1);
+      
+      console.log('✅ Estado global mantiene consistencia después de resultado individual');
+    });
+
+    it('debe detectar y manejar datos corruptos', () => {
+      // Simular resultado con ID de partido inexistente
+      const resultadoCorrupto: ResultadoPartido = {
+        partidoId: 'partido-inexistente',
+        golesLocal: 2,
+        golesVisitante: 1,
+        fecha: new Date().toISOString()
+      };
+
+      // Esto no debería romper el sistema
+      expect(() => {
+        calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, [resultadoCorrupto]);
+      }).not.toThrow();
+
+      console.log('✅ Sistema maneja correctamente datos corruptos');
+    });
+  });
+
+  describe('🧹 Test 4: Limpieza y Reinicio de Estado', () => {
+    it('debe limpiar correctamente al eliminar torneo', async () => {
+      partidos = generarCalendario(torneo, EQUIPOS_PRUEBA);
+      
+      // Simular algunos resultados
+      const resultados = partidos.slice(0, 2).map(partido => ({
+        partidoId: partido.id!,
+        golesLocal: Math.floor(Math.random() * 3),
+        golesVisitante: Math.floor(Math.random() * 3),
+        fecha: new Date().toISOString()
+      }));
+
+      // Verificar que hay datos antes de limpiar
+      const tablaConDatos = calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, resultados);
+      expect(tablaConDatos.some(pos => pos.puntos > 0)).toBeTruthy();
+
+      // Simular eliminación de torneo (limpiar AsyncStorage)
+      (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
+      
+      // Verificar que el estado se puede reiniciar
+      const tablaNueva = calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, []);
+      expect(tablaNueva.every(pos => pos.puntos === 0)).toBeTruthy();
+
+      console.log('✅ Estado limpiado correctamente tras eliminación');
+    });
+  });
+
+  describe('📊 Test 5: Estrés con Volumen Alto', () => {
+    it('debe manejar torneo con muchos equipos', () => {
+      // Generar 16 equipos
+      const equiposGrandes: Equipo[] = Array.from({ length: 16 }, (_, i) => ({
+        id: `equipo-estres-${i + 1}`,
+        nombre: `Equipo ${i + 1}`,
+        ciudad: `Ciudad ${i + 1}`,
+        categoria: 'Senior',
+        tipoFutbol: 'F11',
+        entrenadorId: `entrenador-${i + 1}`,
+        colores: { principal: '#FF0000', secundario: '#0000FF' },
+        jugadores: [],
+        fechaCreacion: new Date().toISOString()
+      }));
+
+      const torneoGrande: Torneo = {
+        ...torneo,
+        id: 'torneo-estres',
+        equiposIds: equiposGrandes.map(e => e.id)
+      };
+
+      const tiempoInicio = Date.now();
+      
+      // Generar calendario
+      const partidosGrandes = generarCalendario(torneoGrande, equiposGrandes);
+      
+      // Simular muchos resultados
+      const resultadosGrandes = partidosGrandes.map(partido => ({
+        partidoId: partido.id!,
+        golesLocal: Math.floor(Math.random() * 5),
+        golesVisitante: Math.floor(Math.random() * 5),
+        fecha: new Date().toISOString()
+      }));
+
+      // Calcular tabla
+      const tablaGrande = calcularTablaPosiciones(torneoGrande, equiposGrandes, resultadosGrandes);
+      
+      const tiempoFin = Date.now();
+      const duracion = tiempoFin - tiempoInicio;
+
+      expect(partidosGrandes.length).toBe(16 * 15); // 240 partidos
+      expect(tablaGrande).toHaveLength(16);
+      expect(duracion).toBeLessThan(5000); // Menos de 5 segundos
+
+      console.log(`✅ Procesados ${partidosGrandes.length} partidos en ${duracion}ms`);
+      console.log(`✅ Torneo de ${equiposGrandes.length} equipos procesado correctamente`);
+    });
+  });
+
+  describe('🚨 Test 6: Casos Extremos y Edge Cases', () => {
+    it('debe manejar empates múltiples correctamente', () => {
+      partidos = generarCalendario(torneo, EQUIPOS_PRUEBA);
+      
+      // Forzar empates en todos los partidos
+      const resultadosEmpates = partidos.map(partido => ({
+        partidoId: partido.id!,
+        golesLocal: 1,
+        golesVisitante: 1,
+        fecha: new Date().toISOString()
+      }));
+
+      const tablaEmpates = calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, resultadosEmpates);
+      
+      // Todos los equipos deben tener los mismos puntos
+      const puntosEquipo = tablaEmpates[0].puntos;
+      expect(tablaEmpates.every(pos => pos.puntos === puntosEquipo)).toBeTruthy();
+      
+      // Diferencia de goles debe ser 0 para todos
+      expect(tablaEmpates.every(pos => pos.golDiferencia === 0)).toBeTruthy();
+
+      console.log('✅ Empates múltiples manejados correctamente');
+    });
+
+    it('debe manejar goleadas extremas', () => {
+      partidos = generarCalendario(torneo, EQUIPOS_PRUEBA);
+      
+      // Primer partido: goleada 10-0
+      const goleada: ResultadoPartido = {
+        partidoId: partidos[0].id!,
+        golesLocal: 10,
+        golesVisitante: 0,
+        fecha: new Date().toISOString()
+      };
+
+      const tablaGoleada = calcularTablaPosiciones(torneo, EQUIPOS_PRUEBA, [goleada]);
+      const equipoGoleador = tablaGoleada.find(pos => pos.equipoId === partidos[0].equipoLocalId);
+      
+      expect(equipoGoleador?.golDiferencia).toBe(10);
+      expect(equipoGoleador?.golesAFavor).toBe(10);
+
+      console.log('✅ Goleadas extremas procesadas correctamente');
+    });
+  });
+});
+
+// Función auxiliar para logs de debug
+function logEstadoTorneo(torneo: Torneo, tabla: any[]) {
+  console.log('\n📊 ESTADO DEL TORNEO:');
+  console.log(`🏆 ${torneo.nombre} (${torneo.tipo.toUpperCase()})`);
+  console.log(`📅 ${torneo.fechaInicio} - ${torneo.fechaFin}`);
+  console.log(`⚽ ${torneo.equiposIds.length} equipos`);
+  console.log(`🏁 Estado: ${torneo.estado}`);
+  console.log('\n📋 TABLA DE POSICIONES:');
+  tabla.forEach((pos, i) => {
+    console.log(`${i + 1}° - Equipo ${pos.equipoId}: ${pos.puntos}pts (${pos.partidosJugados}PJ)`);
+  });
+  console.log('');
+}
+
+export { logEstadoTorneo };

@@ -77,7 +77,10 @@ export default function EquiposScreen() {
             <TouchableOpacity
               key={equipo.id}
               style={styles.equipoCard}
-              onPress={() => router.push(`/(tabs)/(equipos)/${equipo.id}`)}
+              onPress={() => {
+                console.log('🎯 NAVEGANDO A EQUIPO ID:', equipo.id);
+                router.push(`/(tabs)/(equipos)/${equipo.id}`);
+              }}
             >
               <View style={styles.equipoHeader}>
                 {equipo.escudo && (

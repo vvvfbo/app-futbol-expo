@@ -1,7 +1,7 @@
 import Colors from '@/constants/colors';
 import { Clasificacion, Equipo } from '@/types';
 import { Award, Check, Medal, Trophy, X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { memo, useState } from 'react';
 import {
   Alert,
   Image,

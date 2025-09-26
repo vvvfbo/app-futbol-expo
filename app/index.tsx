@@ -1,12 +1,22 @@
 import { useAuth } from '@/hooks/auth-context';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OptimizedErrorBoundary } from '@/components/OptimizedComponents';
+import { SuperLayoutStyles } from '@/constants/super-styles';
 
 export default function IndexScreen() {
+  return (
+    <OptimizedErrorBoundary>
+      <IndexScreenContent />
+    </OptimizedErrorBoundary>
+  );
+}
+
+function IndexScreenContent() {
   const { user, isLoading } = useAuth();
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -77,14 +87,26 @@ export default function IndexScreen() {
   }, [user, isLoading, isNavigating]);
 
   return (
-    <LinearGradient
-      colors={[Colors.gradient.start, Colors.gradient.end]}
-      style={styles.container}
-    >
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="white" />
-      </View>
-    </LinearGradient>
+    <View style={SuperLayoutStyles.screenContainer}>
+      <LinearGradient
+        colors={['#667eea', '#764ba2']}
+        style={styles.container}
+      >
+        <View style={SuperLayoutStyles.centeredContainer}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>⚽</Text>
+            <Text style={styles.appName}>FutbolApp</Text>
+          </View>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.loadingText}>
+            Cargando tu experiencia deportiva...
+          </Text>
+          <Text style={styles.subText}>
+            Preparando el mejor fútbol digital
+          </Text>
+        </View>
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -92,9 +114,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  logoContainer: {
     alignItems: 'center',
+    marginBottom: 48,
+  },
+  logoText: {
+    fontSize: 64,
+    marginBottom: 8,
+  },
+  appName: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginTop: 24,
+  },
+  subText: {
+    fontSize: 14,
+    color: '#FFFFFF90',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

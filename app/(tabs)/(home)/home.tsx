@@ -4,7 +4,10 @@ import { Trophy, Calendar, Users, Plus, Search, Heart, Building2, MessageCircle,
 import { useAuth } from '@/hooks/auth-context';
 import { useData } from '@/hooks/data-context';
 import Colors from '@/constants/colors';
-import { GlobalStyles, createButtonStyle, createButtonTextStyle } from '@/constants/styles';
+import { SuperLayoutStyles } from '@/constants/super-styles';
+import SuperButton from '@/components/SuperButton';
+import SuperCard from '@/components/SuperCard';
+import SuperHeader from '@/components/SuperHeader';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 
@@ -118,23 +121,25 @@ export default function HomeScreen() {
         )}
 
         {isEntrenador && (
-          <View style={GlobalStyles.section}>
-            <Text style={GlobalStyles.sectionTitle}>Acciones Rápidas</Text>
-            <View style={GlobalStyles.buttonRow}>
-              <TouchableOpacity 
-                style={[...createButtonStyle('medium', 'primary'), GlobalStyles.buttonWithIcon, { flex: 1 }]}
+          <View style={SuperLayoutStyles.section}>
+            <Text style={SuperLayoutStyles.sectionTitle}>Acciones Rápidas</Text>
+            <View style={SuperLayoutStyles.buttonRow}>
+              <SuperButton
+                title="Crear Club"
+                variant="primary"
+                size="medium"
                 onPress={() => router.push('/crear-club')}
-              >
-                <Building2 size={18} color="white" />
-                <Text style={createButtonTextStyle('primary')}>Crear Club</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[...createButtonStyle('medium', 'secondary'), GlobalStyles.buttonWithIcon, { flex: 1 }]}
+                icon={<Building2 size={18} color="white" />}
+                style={{ flex: 1 }}
+              />
+              <SuperButton
+                title="Crear Torneo"
+                variant="secondary"
+                size="medium"
                 onPress={() => router.push('/crear-torneo')}
-              >
-                <Plus size={18} color="white" />
-                <Text style={createButtonTextStyle('secondary')}>Crear Torneo</Text>
-              </TouchableOpacity>
+                icon={<Plus size={18} color="white" />}
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
         )}
@@ -152,32 +157,31 @@ export default function HomeScreen() {
                 </Text>
               </View>
             )}
-            <View style={GlobalStyles.buttonRow}>
-              <TouchableOpacity 
-                style={[...createButtonStyle('compact', 'outline'), GlobalStyles.buttonWithIcon, { flex: 1 }]}
+            <View style={SuperLayoutStyles.buttonRow}>
+              <SuperButton
+                title="Buscar"
+                variant="ghost"
+                size="small"
                 onPress={() => router.push('/(tabs)/(amistosos)/buscar')}
-              >
-                <Search size={16} color={Colors.primary} />
-                <Text style={createButtonTextStyle('outline')}>Buscar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[...createButtonStyle('compact', 'ghost'), GlobalStyles.buttonWithIcon, { flex: 1 }]}
+                icon={<Search size={16} color={Colors.primary} />}
+                style={{ flex: 1 }}
+              />
+              <SuperButton
+                title="Ofrecer"
+                variant="success"
+                size="small"
                 onPress={() => router.push('/(tabs)/(amistosos)/crear-disponibilidad')}
-              >
-                <Heart size={16} color={Colors.primary} />
-                <Text style={createButtonTextStyle('ghost')}>Ofrecer</Text>
-              </TouchableOpacity>
+                icon={<Heart size={16} color="white" />}
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
         )}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Trophy size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>
-              {isEntrenador ? 'Mis Torneos' : 'Torneos Relevantes'}
-            </Text>
-          </View>
+        <SuperCard elevated>
+          <SuperHeader
+            title={isEntrenador ? 'Mis Torneos' : 'Torneos Relevantes'}
+          />
           {torneosRelevantes.length > 0 ? (
             torneosRelevantes.map((torneo) => (
               <TouchableOpacity 
@@ -199,13 +203,12 @@ export default function HomeScreen() {
               {isEntrenador ? 'No tienes torneos creados' : 'No hay torneos disponibles'}
             </Text>
           )}
-        </View>
+        </SuperCard>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Calendar size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Próximos Partidos</Text>
-          </View>
+        <SuperCard elevated>
+          <SuperHeader
+            title="Próximos Partidos"
+          />
           {proximosPartidos.length > 0 ? (
             proximosPartidos.map(partido => {
               const equipoLocal = equipos.find(e => e.id === partido.equipoLocalId);
@@ -229,14 +232,13 @@ export default function HomeScreen() {
           ) : (
             <Text style={styles.emptyText}>No hay partidos programados</Text>
           )}
-        </View>
+        </SuperCard>
 
         {isEntrenador && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Building2 size={20} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Mis Clubes</Text>
-            </View>
+          <SuperCard elevated>
+            <SuperHeader
+              title="Mis Clubes"
+            />
             {misClubes.length > 0 ? (
               misClubes.map(club => {
                 const equiposDelClub = equipos.filter(e => e.clubId === club.id);
@@ -259,15 +261,14 @@ export default function HomeScreen() {
             ) : (
               <Text style={styles.emptyText}>No tienes clubes creados</Text>
             )}
-          </View>
+          </SuperCard>
         )}
 
         {isEntrenador && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Users size={20} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Mis Equipos</Text>
-            </View>
+          <SuperCard elevated>
+            <SuperHeader
+              title="Mis Equipos"
+            />
             {misEquipos.length > 0 ? (
               misEquipos.map(equipo => (
                 <TouchableOpacity 
@@ -302,7 +303,7 @@ export default function HomeScreen() {
             ) : (
               <Text style={styles.emptyText}>No tienes equipos creados</Text>
             )}
-          </View>
+          </SuperCard>
         )}
       </ScrollView>
     </View>

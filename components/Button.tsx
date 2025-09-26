@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { TouchableOpacity, Text, ViewStyle, TextStyle } from 'react-native';
-import { GlobalStyles, createButtonStyle, createButtonTextStyle } from '@/constants/styles';
+import { SuperLayoutStyles } from '@/constants/super-styles';
+
 
 interface ButtonProps {
   title: string;
@@ -14,7 +15,7 @@ interface ButtonProps {
   fullWidth?: boolean;
 }
 
-export default function Button({
+function Button({
   title,
   onPress,
   size = 'medium',
@@ -25,16 +26,17 @@ export default function Button({
   textStyle,
   fullWidth = false,
 }: ButtonProps) {
+
+  // Fallback styles (puedes personalizar o importar los correctos)
   const buttonStyles = [
-    ...createButtonStyle(size, variant),
-    icon && GlobalStyles.buttonWithIcon,
-    fullWidth && { width: '100%' },
+    SuperLayoutStyles.button,
+  fullWidth && { width: '100%' as const },
     disabled && { opacity: 0.5 },
     style,
   ];
 
   const textStyles = [
-    createButtonTextStyle(variant),
+    SuperLayoutStyles.buttonText,
     textStyle,
   ];
 
@@ -50,3 +52,5 @@ export default function Button({
     </TouchableOpacity>
   );
 }
+
+export default memo(Button);

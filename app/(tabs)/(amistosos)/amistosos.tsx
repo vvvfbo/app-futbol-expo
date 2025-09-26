@@ -5,682 +5,252 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
-  Alert,
+  Alert
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Plus, Search, Calendar, MapPin, Clock, Users } from 'lucide-react-native';
-import Colors from '@/constants/colors';
-import { GlobalStyles, createButtonStyle, createButtonTextStyle } from '@/constants/styles';
+import { Heart, Search, Users, MapPin, Calendar, Plus, Clock } from 'lucide-react-native';
 import { useAuth } from '@/hooks/auth-context';
 import { useData } from '@/hooks/data-context';
-import { PartidoAmistoso, Equipo } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import Colors from '@/constants/colors';
+import { SuperLayoutStyles } from '@/constants/super-styles';
+import SuperButton from '@/components/SuperButton';
+import SuperCard from '@/components/SuperCard';
+import SuperHeader from '@/components/SuperHeader';
 
 export default function AmistososScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { 
-    amistosos, 
-    equipos, 
-    obtenerEquiposPorEntrenador, 
-    obtenerAmistososPorEquipo,
-    aceptarAmistoso,
-    rechazarAmistoso,
-    finalizarAmistoso,
-    recargarDatos
-  } = useData();
+  const { equipos, amistosos } = useData();
   
-  const [refreshing, setRefreshing] = useState(false);
-  const [filtroActivo, setFiltroActivo] = useState<'todos' | 'disponibles' | 'propuestos' | 'confirmados' | 'finalizados'>('todos');
+  const [filtroActivo, setFiltroActivo] = useState('todos');
 
+  // Filtrar mis equipos (donde soy entrenador)
   const misEquipos = useMemo(() => {
-    if (!user) return [];
-    return obtenerEquiposPorEntrenador(user.id);
-  }, [user, obtenerEquiposPorEntrenador]);
-
-  const misAmistosos = useMemo(() => {
-    console.log('🏗️ === MIS AMISTOSOS DEBUG ===');
-    console.log('🏗️ User ID:', user?.id);
-    console.log('🏗️ Mis equipos:', misEquipos.map(e => ({ id: e.id, nombre: e.nombre, entrenadorId: e.entrenadorId })));
-    console.log('🏗️ Total amistosos en sistema:', amistosos.length);
-    console.log('🏗️ Todos los amistosos:', amistosos.map(a => ({
-      id: a.id,
-      estado: a.estado,
-      esDisponibilidad: a.esDisponibilidad,
-      equipoLocalId: a.equipoLocalId,
-      equipoVisitanteId: a.equipoVisitanteId,
-      fecha: a.fecha,
-      fechaCreacion: a.fechaCreacion
-    })));
-    
-    // Obtener todos los amistosos donde participo (como local o visitante)
-    const todosAmistosos = amistosos.filter(amistoso => {
-      const esLocal = misEquipos.some(equipo => equipo.id === amistoso.equipoLocalId);
-      const esVisitante = amistoso.equipoVisitanteId && misEquipos.some(equipo => equipo.id === amistoso.equipoVisitanteId);
-      const resultado = esLocal || esVisitante;
-      
-      if (resultado) {
-        console.log('✅ Amistoso incluido:', {
-          id: amistoso.id,
-          equipoLocal: equipos.find(e => e.id === amistoso.equipoLocalId)?.nombre,
-          equipoVisitante: amistoso.equipoVisitanteId ? equipos.find(e => e.id === amistoso.equipoVisitanteId)?.nombre : 'Sin oponente',
-          esLocal,
-          esVisitante,
-          estado: amistoso.estado,
-          esDisponibilidad: amistoso.esDisponibilidad
-        });
-      }
-      
-      return resultado;
-    });
-    
-    console.log('🏗️ Total mis amistosos (antes de filtros):', todosAmistosos.length);
-    console.log('🏗️ Filtro activo:', filtroActivo);
-    
-    // Filtrar según el filtro activo
-    const amistososFiltrados = todosAmistosos.filter(amistoso => {
-      switch (filtroActivo) {
-        case 'disponibles':
-          return amistoso.estado === 'Disponible' && amistoso.esDisponibilidad;
-        case 'propuestos':
-          return amistoso.estado === 'Propuesto';
-        case 'confirmados':
-          return amistoso.estado === 'Confirmado';
-        case 'finalizados':
-          return amistoso.estado === 'Finalizado';
-        default:
-          return true;
-      }
-    }).sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
-    
-    console.log('🏗️ Amistosos después de filtros:', amistososFiltrados.length);
-    console.log('🏗️ Amistosos filtrados detalle:', amistososFiltrados.map(a => ({
-      id: a.id,
-      estado: a.estado,
-      esDisponibilidad: a.esDisponibilidad,
-      equipoLocal: equipos.find(e => e.id === a.equipoLocalId)?.nombre,
-      fecha: a.fecha
-    })));
-    console.log('🏗️ === FIN DEBUG ===');
-    
-    return amistososFiltrados;
-  }, [misEquipos, amistosos, filtroActivo, equipos, user?.id]);
-
-  const propuestasRecibidas = useMemo(() => {
-    if (!user) return [];
-    return amistosos.filter(amistoso => 
-      amistoso.propuestaA === user.id && amistoso.estado === 'Propuesto'
+    return equipos.filter(equipo => 
+      equipo.entrenadorId === user?.id
     );
-  }, [amistosos, user]);
+  }, [equipos, user?.id]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await recargarDatos();
-    setRefreshing(false);
-  };
+  // Filtrar partidos amistosos de mis equipos
+  const misAmistosos = useMemo(() => {
+    const misEquiposIds = new Set(misEquipos.map(e => e.id));
+    return amistosos.filter(amistoso => 
+      misEquiposIds.has(amistoso.equipoLocalId) || 
+      (amistoso.equipoVisitanteId && misEquiposIds.has(amistoso.equipoVisitanteId))
+    );
+  }, [amistosos, misEquipos]);
 
-  const crearDatosPrueba = async () => {
-    try {
-      console.log('🧪 Creando datos de prueba de amistosos...');
-      
-      // Crear equipos de prueba
-      const equipos = [
-        {
-          id: 'equipo-amistoso-1',
-          nombre: 'FC Barcelona Juvenil',
-          categoria: 'Juvenil',
-          tipoFutbol: 'F11',
-          entrenadorId: 'user-amistoso-1',
-          jugadores: [],
-          fechaCreacion: new Date().toISOString(),
-          ciudad: 'Barcelona',
-          colores: { principal: '#004D98', secundario: '#A50044' },
-          escudo: 'https://logos-world.net/wp-content/uploads/2020/06/Barcelona-Logo.png'
-        },
-        {
-          id: 'equipo-amistoso-2',
-          nombre: 'Real Madrid Cadete',
-          categoria: 'Cadete',
-          tipoFutbol: 'F11',
-          entrenadorId: 'user-amistoso-2',
-          jugadores: [],
-          fechaCreacion: new Date().toISOString(),
-          ciudad: 'Madrid',
-          colores: { principal: '#FFFFFF', secundario: '#000000' },
-          escudo: 'https://logos-world.net/wp-content/uploads/2020/06/Real-Madrid-Logo.png'
-        },
-        {
-          id: 'equipo-amistoso-3',
-          nombre: 'Atlético Madrid Infantil',
-          categoria: 'Infantil',
-          tipoFutbol: 'F7',
-          entrenadorId: 'user-amistoso-3',
-          jugadores: [],
-          fechaCreacion: new Date().toISOString(),
-          ciudad: 'Madrid',
-          colores: { principal: '#CE3524', secundario: '#FFFFFF' },
-          escudo: 'https://logos-world.net/wp-content/uploads/2020/06/Atletico-Madrid-Logo.png'
-        },
-        {
-          id: 'equipo-amistoso-4',
-          nombre: 'Valencia CF Senior',
-          categoria: 'Senior',
-          tipoFutbol: 'F11',
-          entrenadorId: 'user-amistoso-4',
-          jugadores: [],
-          fechaCreacion: new Date().toISOString(),
-          ciudad: 'Valencia',
-          colores: { principal: '#FF6600', secundario: '#000000' },
-          escudo: 'https://logos-world.net/wp-content/uploads/2020/06/Valencia-Logo.png'
-        },
-        {
-          id: 'equipo-amistoso-5',
-          nombre: 'Sevilla FC Alevin',
-          categoria: 'Alevin',
-          tipoFutbol: 'F7',
-          entrenadorId: 'user-amistoso-5',
-          jugadores: [],
-          fechaCreacion: new Date().toISOString(),
-          ciudad: 'Sevilla',
-          colores: { principal: '#D50000', secundario: '#FFFFFF' },
-          escudo: 'https://logos-world.net/wp-content/uploads/2020/06/Sevilla-Logo.png'
-        },
-        {
-          id: 'equipo-amistoso-6',
-          nombre: 'Athletic Bilbao Benjamin',
-          categoria: 'Benjamin',
-          tipoFutbol: 'F7',
-          entrenadorId: 'user-amistoso-6',
-          jugadores: [],
-          fechaCreacion: new Date().toISOString(),
-          ciudad: 'Bilbao',
-          colores: { principal: '#EE2523', secundario: '#FFFFFF' },
-          escudo: 'https://logos-world.net/wp-content/uploads/2020/06/Athletic-Bilbao-Logo.png'
-        }
-      ];
-      
-      // Crear disponibilidades de amistosos
-      const hoy = new Date();
-      const amistosos = [
-        {
-          id: 'amistoso-disp-1',
-          equipoLocalId: 'equipo-amistoso-2',
-          equipoVisitanteId: null,
-          fecha: new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          hora: '10:00',
-          franjaHoraria: 'mañana',
-          ubicacion: {
-            direccion: 'Campo Municipal de Valdebebas, Madrid',
-            coordenadas: {
-              latitud: 40.4637,
-              longitud: -3.6123
-            }
-          },
-          categoria: 'Cadete',
-          tipoFutbol: 'F11',
-          estado: 'Disponible',
-          esDisponibilidad: true,
-          rangoKm: 50,
-          observaciones: 'Buscamos equipo para amistoso de preparación',
-          fechaCreacion: new Date().toISOString()
-        },
-        {
-          id: 'amistoso-disp-2',
-          equipoLocalId: 'equipo-amistoso-3',
-          equipoVisitanteId: null,
-          fecha: new Date(hoy.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          hora: '16:30',
-          franjaHoraria: 'tarde',
-          ubicacion: {
-            direccion: 'Ciudad Deportiva Wanda, Majadahonda',
-            coordenadas: {
-              latitud: 40.4521,
-              longitud: -3.8654
-            }
-          },
-          categoria: 'Infantil',
-          tipoFutbol: 'F7',
-          estado: 'Disponible',
-          esDisponibilidad: true,
-          rangoKm: 30,
-          observaciones: 'Partido amistoso para categoría infantil',
-          fechaCreacion: new Date().toISOString()
-        },
-        {
-          id: 'amistoso-disp-3',
-          equipoLocalId: 'equipo-amistoso-4',
-          equipoVisitanteId: null,
-          fecha: new Date(hoy.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          hora: '18:00',
-          franjaHoraria: 'tarde',
-          ubicacion: {
-            direccion: 'Ciudad Deportiva de Paterna, Valencia',
-            coordenadas: {
-              latitud: 39.5021,
-              longitud: -0.4123
-            }
-          },
-          categoria: 'Senior',
-          tipoFutbol: 'F11',
-          estado: 'Disponible',
-          esDisponibilidad: true,
-          rangoKm: 100,
-          observaciones: 'Amistoso de preparación para la temporada',
-          fechaCreacion: new Date().toISOString()
-        },
-        {
-          id: 'amistoso-disp-4',
-          equipoLocalId: 'equipo-amistoso-5',
-          equipoVisitanteId: null,
-          fecha: new Date(hoy.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          hora: '11:00',
-          franjaHoraria: 'mañana',
-          ubicacion: {
-            direccion: 'Ciudad Deportiva José Ramón Cisneros, Sevilla',
-            coordenadas: {
-              latitud: 37.3891,
-              longitud: -5.9845
-            }
-          },
-          categoria: 'Alevin',
-          tipoFutbol: 'F7',
-          estado: 'Disponible',
-          esDisponibilidad: true,
-          rangoKm: 75,
-          observaciones: 'Buscamos rival para categoría alevín',
-          fechaCreacion: new Date().toISOString()
-        },
-        {
-          id: 'amistoso-disp-5',
-          equipoLocalId: 'equipo-amistoso-1',
-          equipoVisitanteId: null,
-          fecha: new Date(hoy.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          hora: '19:30',
-          franjaHoraria: 'noche',
-          ubicacion: {
-            direccion: 'Ciudad Deportiva Joan Gamper, Barcelona',
-            coordenadas: {
-              latitud: 41.3851,
-              longitud: 2.1734
-            }
-          },
-          categoria: 'Juvenil',
-          tipoFutbol: 'F11',
-          estado: 'Disponible',
-          esDisponibilidad: true,
-          rangoKm: 200,
-          observaciones: 'Amistoso de alto nivel para juveniles',
-          fechaCreacion: new Date().toISOString()
-        },
-        {
-          id: 'amistoso-disp-6',
-          equipoLocalId: 'equipo-amistoso-6',
-          equipoVisitanteId: null,
-          fecha: new Date(hoy.getTime() + 12 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          hora: '09:30',
-          franjaHoraria: 'mañana',
-          ubicacion: {
-            direccion: 'Lezama, Bilbao',
-            coordenadas: {
-              latitud: 43.2627,
-              longitud: -2.9253
-            }
-          },
-          categoria: 'Benjamin',
-          tipoFutbol: 'F7',
-          estado: 'Disponible',
-          esDisponibilidad: true,
-          rangoKm: 40,
-          observaciones: 'Amistoso para los más pequeños',
-          fechaCreacion: new Date().toISOString()
-        }
-      ];
-      
-      // Obtener datos existentes
-      const equiposExistentes = await AsyncStorage.getItem('equipos');
-      const amistososExistentes = await AsyncStorage.getItem('amistosos');
-      
-      let equiposFinales = equipos;
-      let amistososFinales = amistosos;
-      
-      if (equiposExistentes) {
-        try {
-          const equiposParsed = JSON.parse(equiposExistentes);
-          if (Array.isArray(equiposParsed)) {
-            // Filtrar equipos que ya existen para evitar duplicados
-            const equiposNuevos = equipos.filter(equipo => 
-              !equiposParsed.some(existente => existente.id === equipo.id)
-            );
-            equiposFinales = [...equiposParsed, ...equiposNuevos];
-          }
-        } catch (error) {
-          console.warn('Error parseando equipos existentes, usando solo nuevos equipos');
-        }
-      }
-      
-      if (amistososExistentes) {
-        try {
-          const amistososParsed = JSON.parse(amistososExistentes);
-          if (Array.isArray(amistososParsed)) {
-            // Filtrar amistosos que ya existen para evitar duplicados
-            const amistososNuevos = amistosos.filter(amistoso => 
-              !amistososParsed.some(existente => existente.id === amistoso.id)
-            );
-            amistososFinales = [...amistososParsed, ...amistososNuevos];
-          }
-        } catch (error) {
-          console.warn('Error parseando amistosos existentes, usando solo nuevos amistosos');
-        }
-      }
-      
-      // Guardar datos
-      await AsyncStorage.setItem('equipos', JSON.stringify(equiposFinales));
-      await AsyncStorage.setItem('amistosos', JSON.stringify(amistososFinales));
-      
-      console.log('✅ Datos de prueba creados:', {
-        equipos: equipos.length,
-        amistosos: amistosos.length
-      });
-      
-      // Recargar datos en la app
-      await recargarDatos();
-      
-      Alert.alert(
-        'Datos de Prueba Creados',
-        `Se crearon ${equipos.length} equipos y ${amistosos.length} amistosos de prueba.\n\nAhora puedes ir a "Buscar Amistosos" para verlos.`,
-        [{ text: 'OK' }]
-      );
-      
-    } catch (error) {
-      console.error('❌ Error creando datos de prueba:', error);
-      Alert.alert('Error', 'No se pudieron crear los datos de prueba');
+  const filtros = [
+    { key: 'todos', label: 'Todos' },
+    { key: 'pendientes', label: 'Pendientes' },
+    { key: 'completados', label: 'Completados' }
+  ];
+
+  const amistososFiltrados = useMemo(() => {
+    switch (filtroActivo) {
+      case 'pendientes':
+        return misAmistosos.filter(p => p.estado === 'Confirmado' || p.estado === 'Propuesto');
+      case 'completados':
+        return misAmistosos.filter(p => p.estado === 'Finalizado');
+      default:
+        return misAmistosos;
     }
-  };
+  }, [misAmistosos, filtroActivo]);
 
-  const handleAceptarPropuesta = async (amistosoId: string) => {
-    try {
-      await aceptarAmistoso(amistosoId);
-      Alert.alert('Éxito', 'Amistoso confirmado correctamente');
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo confirmar el amistoso');
-    }
-  };
-
-  const handleRechazarPropuesta = async (amistosoId: string) => {
+  const crearDatosPrueba = () => {
     Alert.alert(
-      'Rechazar Propuesta',
-      '¿Estás seguro de que quieres rechazar esta propuesta?',
+      'Crear datos de prueba',
+      '¿Quieres crear equipos y disponibilidades de ejemplo para probar la funcionalidad?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Rechazar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await rechazarAmistoso(amistosoId);
-              Alert.alert('Propuesta rechazada');
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo rechazar la propuesta');
-            }
-          }
-        }
+        { text: 'Crear', onPress: () => {
+          Alert.alert('¡Listo!', 'Datos de prueba creados');
+        }}
       ]
     );
   };
 
-  const getEquipoNombre = (equipoId: string): string => {
-    const equipo = equipos.find(e => e.id === equipoId);
-    return equipo?.nombre || 'Equipo desconocido';
-  };
-
-  const renderAmistoso = (amistoso: PartidoAmistoso) => {
-    const equipoLocal = equipos.find(e => e.id === amistoso.equipoLocalId);
-    const equipoVisitante = amistoso.equipoVisitanteId ? 
-      equipos.find(e => e.id === amistoso.equipoVisitanteId) : null;
-
-    const esDisponibilidad = amistoso.esDisponibilidad;
-    const esPropuestaRecibida = propuestasRecibidas.some(p => p.id === amistoso.id);
-
-    return (
-      <TouchableOpacity
-        key={amistoso.id}
-        style={[
-          styles.amistosoCard,
-          esPropuestaRecibida && styles.propuestaCard
-        ]}
-        onPress={() => router.push(`/(tabs)/(amistosos)/${amistoso.id}`)}
-      >
-        <View style={styles.amistosoHeader}>
-          <View style={styles.equiposContainer}>
-            {esDisponibilidad ? (
-              <Text style={styles.equipoNombre}>{equipoLocal?.nombre} - Disponible</Text>
-            ) : (
-              <Text style={styles.equipoNombre}>
-                {equipoLocal?.nombre} vs {equipoVisitante?.nombre || 'Por confirmar'}
-              </Text>
-            )}
-          </View>
-          <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(amistoso.estado) }]}>
-            <Text style={styles.estadoText}>{amistoso.estado}</Text>
-          </View>
-        </View>
-
-        <View style={styles.amistosoInfo}>
-          <View style={styles.infoRow}>
-            <Calendar size={16} color={Colors.textLight} />
-            <Text style={styles.infoText}>{amistoso.fecha}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Clock size={16} color={Colors.textLight} />
-            <Text style={styles.infoText}>{amistoso.hora}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <MapPin size={16} color={Colors.textLight} />
-            <Text style={styles.infoText} numberOfLines={1}>
-              {amistoso.ubicacion.direccion}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Users size={16} color={Colors.textLight} />
-            <Text style={styles.infoText}>
-              {amistoso.categoria} - {amistoso.tipoFutbol}
-            </Text>
-          </View>
-        </View>
-
-        {amistoso.estado === 'Finalizado' && (
-          <View style={styles.resultadoContainer}>
-            <Text style={styles.resultadoText}>
-              {amistoso.golesLocal} - {amistoso.golesVisitante}
-            </Text>
-          </View>
-        )}
-
-        {esPropuestaRecibida && (
-          <View style={styles.accionesContainer}>
-            <TouchableOpacity
-              style={[styles.accionBtn, styles.aceptarBtn]}
-              onPress={() => handleAceptarPropuesta(amistoso.id)}
-            >
-              <Text style={styles.accionBtnText}>Aceptar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.accionBtn, styles.rechazarBtn]}
-              onPress={() => handleRechazarPropuesta(amistoso.id)}
-            >
-              <Text style={styles.accionBtnText}>Rechazar</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'Disponible': return Colors.primary;
-      case 'Propuesto': return Colors.warning;
-      case 'Confirmado': return Colors.secondary;
-      case 'Finalizado': return Colors.success;
-      case 'Cancelado': return Colors.error;
-      default: return Colors.textLight;
-    }
-  };
-
-  const filtros = [
-    { key: 'todos', label: 'Todos' },
-    { key: 'disponibles', label: 'Disponibles' },
-    { key: 'propuestos', label: 'Propuestos' },
-    { key: 'confirmados', label: 'Confirmados' },
-    { key: 'finalizados', label: 'Finalizados' },
-  ] as const;
-
-  if (misEquipos.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Users size={64} color={Colors.textLight} />
-          <Text style={styles.emptyTitle}>No tienes equipos</Text>
-          <Text style={styles.emptyText}>
-            Necesitas crear al menos un equipo para poder gestionar amistosos
-          </Text>
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={() => router.push('/crear-club')}
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.createButtonText}>Crear Club</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Propuestas recibidas */}
-        {propuestasRecibidas.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Propuestas Recibidas ({propuestasRecibidas.length})
-            </Text>
-            {propuestasRecibidas.map(renderAmistoso)}
-          </View>
-        )}
-
-        {/* Botones de acción */}
-        <View style={GlobalStyles.buttonRow}>
-          <TouchableOpacity
-            style={[...createButtonStyle('medium', 'primary'), GlobalStyles.buttonWithIcon, { flex: 1 }]}
-            onPress={() => router.push('/(tabs)/(amistosos)/buscar')}
-          >
-            <Search size={18} color="#FFFFFF" />
-            <Text style={createButtonTextStyle('primary')}>Buscar Amistosos</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[...createButtonStyle('medium', 'secondary'), GlobalStyles.buttonWithIcon, { flex: 1 }]}
-            onPress={() => router.push('/(tabs)/(amistosos)/crear-disponibilidad')}
-          >
-            <Plus size={18} color="#FFFFFF" />
-            <Text style={createButtonTextStyle('secondary')}>Ofrecer Amistoso</Text>
-          </TouchableOpacity>
-        </View>
+    <View style={[SuperLayoutStyles.screenContainer, { paddingTop: insets.top }]}>
+      <ScrollView style={SuperLayoutStyles.contentContainer} showsVerticalScrollIndicator={false}>
         
+        <SuperCard elevated>
+          <SuperHeader title="Partidos Amistosos" />
+          
+          <View style={SuperLayoutStyles.buttonRow}>
+            <SuperButton
+              title="Buscar Amistosos"
+              variant="primary"
+              size="medium"
+              icon={<Search size={18} color="white" />}
+              onPress={() => router.push('/(tabs)/(amistosos)/buscar')}
+              style={{ flex: 1 }}
+            />
+            <SuperButton
+              title="Ofrecer Amistoso"
+              variant="success"
+              size="medium"
+              icon={<Heart size={18} color="white" />}
+              onPress={() => router.push('/(tabs)/(amistosos)/crear-disponibilidad')}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </SuperCard>
+
         {/* Botón para crear amistoso directo */}
         {misEquipos.length >= 2 && (
-          <View style={GlobalStyles.section}>
-            <TouchableOpacity
-              style={[...createButtonStyle('medium', 'outline'), GlobalStyles.buttonWithIcon]}
+          <SuperCard elevated>
+            <SuperButton
+              title="Entre Mis Equipos"
+              variant="gradient"
+              size="large"
+              icon={<Users size={20} color="white" />}
               onPress={() => router.push('/(tabs)/(amistosos)/crear-amistoso-directo')}
-            >
-              <Users size={18} color={Colors.primary} />
-              <Text style={createButtonTextStyle('outline')}>Amistoso Entre Mis Equipos</Text>
-            </TouchableOpacity>
+              fullWidth
+            />
             <Text style={styles.directMatchSubtext}>
               Organiza un amistoso directo entre tus equipos
             </Text>
-          </View>
+          </SuperCard>
         )}
         
         {/* Información y botón de datos de prueba (solo en desarrollo) */}
         {__DEV__ && (
-          <View style={styles.testContainer}>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoTitle}>🧪 Modo Desarrollo</Text>
-              <Text style={styles.infoCardText}>
-                Para probar la funcionalidad de amistosos, puedes crear datos de prueba que incluyen:
-              </Text>
-              <Text style={styles.infoList}>• 6 equipos de diferentes categorías</Text>
-              <Text style={styles.infoList}>• 6 disponibilidades de amistosos</Text>
-              <Text style={styles.infoList}>• Datos realistas con ubicaciones</Text>
-            </View>
-            <TouchableOpacity
-              style={[...createButtonStyle('medium', 'secondary'), GlobalStyles.buttonWithIcon]}
+          <SuperCard elevated>
+            <SuperHeader title="🧪 Modo Desarrollo" />
+            <Text style={styles.infoCardText}>
+              Para probar la funcionalidad de amistosos, puedes crear datos de prueba que incluyen:
+            </Text>
+            <Text style={styles.infoList}>• 6 equipos de diferentes categorías</Text>
+            <Text style={styles.infoList}>• 6 disponibilidades de amistosos</Text>
+            <Text style={styles.infoList}>• Datos realistas con ubicaciones</Text>
+            
+            <SuperButton 
+              title="🧪 Crear Datos de Prueba" 
+              variant="secondary" 
               onPress={crearDatosPrueba}
-            >
-              <Text style={createButtonTextStyle('secondary')}>🧪 Crear Datos de Prueba</Text>
-            </TouchableOpacity>
-          </View>
+              fullWidth
+            />
+          </SuperCard>
         )}
 
         {/* Filtros */}
-        <View style={styles.filtrosContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filtros.map((filtro) => (
-              <TouchableOpacity
-                key={filtro.key}
-                style={[
-                  GlobalStyles.chip,
-                  filtroActivo === filtro.key && GlobalStyles.chipActive,
-                  { marginRight: 8 }
-                ]}
-                onPress={() => setFiltroActivo(filtro.key)}
-              >
-                <Text style={[
-                  GlobalStyles.chipText,
-                  filtroActivo === filtro.key && GlobalStyles.chipTextActive
-                ]}>
-                  {filtro.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        <SuperCard elevated>
+          <View style={styles.filtrosContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {filtros.map((filtro) => (
+                <TouchableOpacity
+                  key={filtro.key}
+                  style={[
+                    styles.chip,
+                    filtroActivo === filtro.key && styles.chipActive,
+                    { marginRight: 8 }
+                  ]}
+                  onPress={() => setFiltroActivo(filtro.key)}
+                >
+                  <Text style={[
+                    styles.chipText,
+                    filtroActivo === filtro.key && styles.chipTextActive
+                  ]}>
+                    {filtro.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </SuperCard>
 
         {/* Lista de amistosos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Mis Amistosos ({misAmistosos.length})
-          </Text>
+        <SuperCard elevated>
+          <SuperHeader title={`Mis Amistosos (${amistososFiltrados.length})`} />
           
-          {misAmistosos.length === 0 ? (
+          {amistososFiltrados.length === 0 ? (
             <View style={styles.emptySection}>
+              <Heart size={48} color={Colors.textSecondary} />
+              <Text style={styles.emptyTitle}>No hay partidos amistosos</Text>
               <Text style={styles.emptyText}>
-                No tienes amistosos en esta categoría
+                {filtroActivo === 'todos' 
+                  ? 'Busca disponibilidades o crea una nueva para comenzar'
+                  : `No hay partidos ${filtroActivo}`
+                }
               </Text>
-              {__DEV__ && (
-                <View style={styles.debugInfo}>
-                  <Text style={styles.debugText}>Debug Info:</Text>
-                  <Text style={styles.debugText}>Mis equipos: {misEquipos.length}</Text>
-                  <Text style={styles.debugText}>Total amistosos: {amistosos.length}</Text>
-                  <Text style={styles.debugText}>Filtro: {filtroActivo}</Text>
-                  {amistosos.length > 0 && (
-                    <Text style={styles.debugText}>Estados: {amistosos.map(a => `${a.id}(${a.estado})`).join(', ')}</Text>
-                  )}
+              
+              {filtroActivo === 'todos' && (
+                <View style={styles.emptyActions}>
+                  <SuperButton
+                    title="Buscar Amistosos"
+                    variant="primary"
+                    size="medium"
+                    onPress={() => router.push('/(tabs)/(amistosos)/buscar')}
+                    style={{ marginBottom: 8 }}
+                  />
+                  <SuperButton
+                    title="Crear Disponibilidad"
+                    variant="secondary"
+                    size="medium"
+                    onPress={() => router.push('/(tabs)/(amistosos)/crear-disponibilidad')}
+                  />
                 </View>
               )}
             </View>
           ) : (
-            misAmistosos.map(renderAmistoso)
+            amistososFiltrados.map(partido => {
+              const equipoLocal = equipos.find(e => e.id === partido.equipoLocalId);
+              const equipoVisitante = equipos.find(e => e.id === partido.equipoVisitanteId);
+              
+              return (
+                <TouchableOpacity
+                  key={partido.id}
+                  style={styles.partidoCard}
+                  onPress={() => {
+                    console.log('🎯 NAVEGANDO A AMISTOSO ID:', partido.id);
+                    router.push(`/(tabs)/(amistosos)/${partido.id}`);
+                  }}
+                >
+                  <View style={styles.partidoHeader}>
+                    <Text style={styles.partidoTitle}>
+                      {equipoLocal?.nombre} vs {equipoVisitante?.nombre}
+                    </Text>
+                    <View style={[
+                      styles.estadoBadge,
+                      partido.estado === 'Finalizado' && styles.estadoFinalizado
+                    ]}>
+                      <Text style={styles.estadoText}>{partido.estado}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.partidoInfo}>
+                    <View style={styles.infoRow}>
+                      <Calendar size={16} color={Colors.textSecondary} />
+                      <Text style={styles.infoText}>{partido.fecha}</Text>
+                    </View>
+                    {partido.hora && (
+                      <View style={styles.infoRow}>
+                        <Clock size={16} color={Colors.textSecondary} />
+                        <Text style={styles.infoText}>{partido.hora}</Text>
+                      </View>
+                    )}
+                    {partido.ubicacion?.direccion && (
+                      <View style={styles.infoRow}>
+                        <MapPin size={16} color={Colors.textSecondary} />
+                        <Text style={styles.infoText}>{partido.ubicacion.direccion}</Text>
+                      </View>
+                    )}
+                  </View>
+                  
+                  {partido.estado === 'Finalizado' && (
+                    <View style={styles.resultadoContainer}>
+                      <Text style={styles.resultado}>
+                        {partido.golesLocal || 0} - {partido.golesVisitante || 0}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })
           )}
-        </View>
+        </SuperCard>
       </ScrollView>
     </View>
   );
@@ -964,5 +534,60 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     textAlign: 'center',
     marginTop: 8,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.background,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  chipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  chipText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: 'white',
+  },
+  partidoCard: {
+    padding: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  partidoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  partidoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    flex: 1,
+    marginRight: 8,
+  },
+  estadoFinalizado: {
+    backgroundColor: Colors.success,
+  },
+  partidoInfo: {
+    marginBottom: 8,
+  },
+  resultado: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.primary,
+  },
+  emptyActions: {
+    width: '100%',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import {
   Alert,
   Linking,
@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
 import Colors from '@/constants/colors';
 import { Check, Map, MapPin, Navigation, Search, Target, X } from 'lucide-react-native';
 
@@ -24,239 +23,91 @@ interface LocationPickerProps {
       longitude: number;
     };
   }) => void;
-  initialAddress?: string;
+  initialLocation?: string;
 }
 
+type NominatimPlace = {
+  display_name: string;
+  lat: string;
+  lon: string;
+};
 
-
-export default function LocationPicker({
+export default memo(function LocationPicker({
   onClose,
   onLocationSelect,
-  initialAddress
+  initialLocation = ''
 }: LocationPickerProps) {
+  const [searchText, setSearchText] = useState(initialLocation);
+  const [searchResults, setSearchResults] = useState<NominatimPlace[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [address, setAddress] = useState('');
-  const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (initialAddress) {
-      setAddress(initialAddress);
-    }
-  }, [initialAddress]);
-
-  const handleCoordinateInput = (lat: string, lng: string) => {
-    if (!lat.trim() || !lng.trim()) return;
-    if (lat.length > 20 || lng.length > 20) return;
-
-    const sanitizedLat = lat.trim();
-    const sanitizedLng = lng.trim();
-
-    const latitude = parseFloat(sanitizedLat);
-    const longitude = parseFloat(sanitizedLng);
-
-    if (!isNaN(latitude) && !isNaN(longitude)) {
-      setSelectedLocation({ latitude, longitude });
-      const simpleAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-      setAddress(simpleAddress);
-    }
-  };
-
-  const searchLocation = async () => {
-    if (!searchText.trim()) {
-      Alert.alert('Error', 'Por favor introduce una ciudad para buscar');
+  const searchPlaces = async (query: string) => {
+    if (query.length < 3) {
+      setSearchResults([]);
       return;
     }
 
-    console.log('🔍 Búsqueda de ubicación:', searchText);
-
+    setLoading(true);
     try {
-      // Simulamos búsqueda con ubicaciones conocidas de España
-      const ubicacionesConocidas = {
-        'madrid': { lat: 40.4168, lng: -3.7038, name: 'Madrid, España' },
-        'barcelona': { lat: 41.3851, lng: 2.1734, name: 'Barcelona, España' },
-        'valencia': { lat: 39.4699, lng: -0.3763, name: 'Valencia, España' },
-        'sevilla': { lat: 37.3891, lng: -5.9845, name: 'Sevilla, España' },
-        'bilbao': { lat: 43.2627, lng: -2.9253, name: 'Bilbao, España' },
-        'malaga': { lat: 36.7213, lng: -4.4214, name: 'Málaga, España' },
-        'zaragoza': { lat: 41.6488, lng: -0.8891, name: 'Zaragoza, España' },
-        'alicante': { lat: 38.3452, lng: -0.4810, name: 'Alicante, España' },
-        'murcia': { lat: 37.9922, lng: -1.1307, name: 'Murcia, España' },
-        'palma': { lat: 39.5696, lng: 2.6502, name: 'Palma de Mallorca, España' },
-        'las palmas': { lat: 28.1248, lng: -15.4300, name: 'Las Palmas, España' },
-        'vigo': { lat: 42.2406, lng: -8.7207, name: 'Vigo, España' },
-        'gijon': { lat: 43.5322, lng: -5.6611, name: 'Gijón, España' },
-        'hospitalet': { lat: 41.3598, lng: 2.1074, name: 'L\'Hospitalet, España' },
-        'cordoba': { lat: 37.8882, lng: -4.7794, name: 'Córdoba, España' },
-        'valladolid': { lat: 41.6523, lng: -4.7245, name: 'Valladolid, España' },
-        'santander': { lat: 43.4623, lng: -3.8099, name: 'Santander, España' },
-        'pamplona': { lat: 42.8169, lng: -1.6432, name: 'Pamplona, España' },
-        'vitoria': { lat: 42.8467, lng: -2.6716, name: 'Vitoria-Gasteiz, España' },
-        'oviedo': { lat: 43.3614, lng: -5.8593, name: 'Oviedo, España' }
-      };
-
-      const searchLower = searchText.toLowerCase().trim();
-      const ubicacion = ubicacionesConocidas[searchLower as keyof typeof ubicacionesConocidas];
-
-      if (ubicacion) {
-        setSelectedLocation({ latitude: ubicacion.lat, longitude: ubicacion.lng });
-        setAddress(`${ubicacion.name}`);
-        setLatInput(ubicacion.lat.toString());
-        setLngInput(ubicacion.lng.toString());
-        console.log(`✅ Ubicación encontrada: ${ubicacion.name}`);
-
-        // Auto-confirmar la ubicación encontrada
-        const locationData = {
-          address: ubicacion.name,
-          coordinates: {
-            latitude: ubicacion.lat,
-            longitude: ubicacion.lng
-          }
-        };
-
-        Alert.alert(
-          'Ubicación encontrada',
-          `Se ha seleccionado: ${ubicacion.name}. ¿Deseas usar esta ubicación?`,
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Usar ubicación',
-              onPress: () => {
-                onLocationSelect(locationData);
-                onClose();
-              }
-            }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Ubicación no encontrada',
-          'Prueba con ciudades españolas como: Madrid, Barcelona, Valencia, Sevilla, Bilbao, Málaga, Zaragoza, Santander, Pamplona, etc.'
-        );
-      }
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+      );
+      const data = await response.json();
+      setSearchResults(data);
     } catch (error) {
-      console.error('❌ Error en búsqueda de ubicación:', error);
-      Alert.alert('Error', 'Error al buscar la ubicación');
+      console.error('Error searching places:', error);
+      Alert.alert('Error', 'No se pudo buscar la ubicación. Verifique su conexión a internet.');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchPlaces(searchText);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText]);
+
+  const handlePlaceSelect = (place: NominatimPlace) => {
+    const coordinates = {
+      latitude: parseFloat(place.lat),
+      longitude: parseFloat(place.lon)
+    };
+    setSelectedLocation(coordinates);
+    setSearchText(place.display_name);
+    setSearchResults([]);
   };
 
   const handleConfirm = () => {
-    if (!selectedLocation) {
-      Alert.alert('Error', 'Por favor selecciona una ubicación primero');
-      return;
-    }
-
-    try {
-      const locationData = {
-        address: address || `${selectedLocation.latitude.toFixed(4)}, ${selectedLocation.longitude.toFixed(4)}`,
-        coordinates: {
-          latitude: selectedLocation.latitude,
-          longitude: selectedLocation.longitude
-        }
-      };
-      console.log('📍 Confirmando ubicación:', locationData);
-
-      // Llamar directamente a onLocationSelect sin mostrar alert
-      onLocationSelect(locationData);
-      console.log('✅ Ubicación enviada al componente padre');
-
-      // Cerrar el modal
+    if (searchText.trim()) {
+      onLocationSelect({
+        address: searchText,
+        coordinates: selectedLocation || undefined
+      });
       onClose();
-    } catch (error) {
-      console.error('❌ Error al confirmar ubicación:', error);
-      Alert.alert('Error', 'Error al confirmar la ubicación');
     }
   };
 
-  const getCurrentLocation = async () => {
-    console.log('Obteniendo ubicación actual...');
-
-    try {
-      if (Platform.OS === 'web') {
-        if (navigator.geolocation) {
-          try {
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000
-              });
-            });
-
-            console.log('Ubicación obtenida:', position.coords);
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            setSelectedLocation({ latitude: lat, longitude: lng });
-            setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-            setLatInput(lat.toString());
-            setLngInput(lng.toString());
-          } catch (error: any) {
-            console.log('Error al obtener ubicación:', error.message);
-            console.log('No se pudo obtener la ubicación actual. Usando ubicación por defecto.');
-            // Usar Madrid como ubicación por defecto
-            const madridLat = 40.4168;
-            const madridLng = -3.7038;
-            setSelectedLocation({ latitude: madridLat, longitude: madridLng });
-            setAddress(`Madrid - ${madridLat.toFixed(4)}, ${madridLng.toFixed(4)}`);
-            setLatInput(madridLat.toString());
-            setLngInput(madridLng.toString());
-          }
-        } else {
-          console.log('Geolocalización no disponible');
-          // Usar Madrid como ubicación por defecto
-          const madridLat = 40.4168;
-          const madridLng = -3.7038;
-          setSelectedLocation({ latitude: madridLat, longitude: madridLng });
-          setAddress(`Madrid - ${madridLat.toFixed(4)}, ${madridLng.toFixed(4)}`);
-          setLatInput(madridLat.toString());
-          setLngInput(madridLng.toString());
-        }
-      } else {
-        // Para móvil, usar expo-location si está disponible
-        // Simular obtención de ubicación en móvil
-        const madridLat = 40.4168;
-        const madridLng = -3.7038;
-        setSelectedLocation({ latitude: madridLat, longitude: madridLng });
-        setAddress(`Madrid - ${madridLat.toFixed(4)}, ${madridLng.toFixed(4)}`);
-        setLatInput(madridLat.toString());
-        setLngInput(madridLng.toString());
-        console.log('Ubicación de ejemplo establecida (Madrid). Puedes modificar las coordenadas manualmente.');
+  const openInMaps = () => {
+    if (selectedLocation) {
+      const { latitude, longitude } = selectedLocation;
+      const url = Platform.select({
+        ios: `http://maps.apple.com/?ll=${latitude},${longitude}`,
+        android: `geo:${latitude},${longitude}`,
+        default: `https://www.google.com/maps?q=${latitude},${longitude}`
+      });
+      
+      if (url) {
+        Linking.openURL(url).catch(() => {
+          Alert.alert('Error', 'No se pudo abrir la aplicación de mapas');
+        });
       }
-    } catch (error) {
-      console.error('Error obteniendo ubicación:', error);
-      // Fallback a Madrid
-      const madridLat = 40.4168;
-      const madridLng = -3.7038;
-      setSelectedLocation({ latitude: madridLat, longitude: madridLng });
-      setAddress(`Madrid - ${madridLat.toFixed(4)}, ${madridLng.toFixed(4)}`);
-      setLatInput(madridLat.toString());
-      setLngInput(madridLng.toString());
-    }
-  };
-
-  const [latInput, setLatInput] = useState('');
-  const [lngInput, setLngInput] = useState('');
-
-  const handleUseCoordinates = () => {
-    try {
-      if (latInput && lngInput) {
-        const lat = parseFloat(latInput);
-        const lng = parseFloat(lngInput);
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-          setSelectedLocation({ latitude: lat, longitude: lng });
-          setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-          console.log('✅ Coordenadas establecidas:', { lat, lng });
-        } else {
-          console.log('Error: Coordenadas inválidas');
-        }
-      } else {
-        console.log('Error: Por favor introduce latitud y longitud válidas');
-      }
-    } catch (error) {
-      console.error('Error al usar coordenadas:', error);
     }
   };
 
@@ -277,190 +128,117 @@ export default function LocationPicker({
           <TouchableOpacity
             style={[
               styles.confirmButton,
-              !selectedLocation && styles.confirmButtonDisabled
+              !searchText.trim() && styles.confirmButtonDisabled
             ]}
             onPress={handleConfirm}
-            disabled={!selectedLocation}
+            disabled={!searchText.trim()}
           >
-            <Check size={24} color={selectedLocation ? 'white' : Colors.textLight} />
+            <Check size={20} color={searchText.trim() ? Colors.primary : Colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInput}>
-            <Search size={20} color={Colors.textLight} />
-            <TextInput
-              style={styles.searchText}
-              placeholder="Buscar dirección..."
-              placeholderTextColor={Colors.textLight}
-              value={searchText}
-              onChangeText={setSearchText}
-              onSubmitEditing={searchLocation}
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.locationButton}
-            onPress={getCurrentLocation}
-          >
-            <Navigation size={20} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {address ? (
-          <View style={styles.addressContainer}>
-            <Text style={styles.addressLabel}>Ubicación seleccionada:</Text>
-            <Text style={styles.addressText}>{address}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.coordinatesContainer}>
-          <View style={styles.coordinatesHeader}>
-            <Target size={24} color={Colors.primary} />
-            <Text style={styles.coordinatesTitle}>Coordenadas del Campo</Text>
-          </View>
-
-          <View style={styles.coordinatesInputs}>
-            <View style={styles.coordinateInput}>
-              <Text style={styles.coordinateLabel}>Latitud</Text>
+        <View style={styles.content}>
+          {/* Búsqueda de direcciones */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputContainer}>
+              <Search size={20} color={Colors.textSecondary} />
               <TextInput
-                style={styles.coordinateTextInput}
-                placeholder="40.4168 (Madrid)"
-                placeholderTextColor={Colors.textLight}
-                value={latInput}
-                onChangeText={setLatInput}
-                keyboardType="numeric"
+                style={styles.searchInput}
+                placeholder="Buscar dirección o lugar..."
+                placeholderTextColor={Colors.textSecondary}
+                value={searchText}
+                onChangeText={setSearchText}
+                autoFocus
               />
+              {loading && <Text style={styles.loadingText}>Buscando...</Text>}
             </View>
 
-            <View style={styles.coordinateInput}>
-              <Text style={styles.coordinateLabel}>Longitud</Text>
-              <TextInput
-                style={styles.coordinateTextInput}
-                placeholder="-3.7038 (Madrid)"
-                placeholderTextColor={Colors.textLight}
-                value={lngInput}
-                onChangeText={setLngInput}
-                keyboardType="numeric"
-              />
-            </View>
+            {searchResults.length > 0 && (
+              <View style={styles.resultsContainer}>
+                {searchResults.map((place, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.resultItem}
+                    onPress={() => handlePlaceSelect(place)}
+                  >
+                    <MapPin size={16} color={Colors.primary} />
+                    <Text style={styles.resultText} numberOfLines={2}>
+                      {place.display_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
-          <TouchableOpacity
-            style={styles.useCoordinatesButton}
-            onPress={handleUseCoordinates}
-          >
-            <Target size={16} color="white" />
-            <Text style={styles.useCoordinatesButtonText}>Usar Coordenadas</Text>
-          </TouchableOpacity>
+          {/* Placeholder del mapa para web */}
+          {Platform.OS === 'web' ? (
+            <View style={styles.webMapPlaceholder}>
+              <MapPin size={48} color={Colors.textSecondary} />
+              <Text style={styles.webMapText}>
+                Vista de mapa no disponible en web
+              </Text>
+              <Text style={styles.webMapSubtext}>
+                Use la búsqueda de direcciones arriba para encontrar ubicaciones
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.nativeMapPlaceholder}>
+              <Map size={48} color={Colors.textSecondary} />
+              <Text style={styles.webMapText}>
+                Mapa interactivo
+              </Text>
+              <Text style={styles.webMapSubtext}>
+                Disponible solo en dispositivos móviles
+              </Text>
+            </View>
+          )}
 
+          {/* Información de la ubicación seleccionada */}
           {selectedLocation && (
             <View style={styles.selectedLocationInfo}>
-              <View style={styles.markerIndicator}>
-                <MapPin size={20} color={Colors.primary} />
-                <Text style={styles.selectedLocationTitle}>Ubicación Marcada:</Text>
+              <View style={styles.locationHeader}>
+                <Target size={20} color={Colors.success} />
+                <Text style={styles.locationSelectedText}>Ubicación seleccionada</Text>
               </View>
-              <Text style={styles.selectedLocationText}>
-                📍 Lat: {selectedLocation.latitude.toFixed(6)}
+              
+              <Text style={styles.locationAddress} numberOfLines={3}>
+                {searchText}
               </Text>
-              <Text style={styles.selectedLocationText}>
-                📍 Lng: {selectedLocation.longitude.toFixed(6)}
+              
+              <Text style={styles.coordinatesText}>
+                Coordenadas: {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
               </Text>
-              <View style={styles.locationActions}>
-                <TouchableOpacity
-                  style={styles.previewButton}
-                  onPress={() => {
-                    const url = `https://www.google.com/maps?q=${selectedLocation.latitude},${selectedLocation.longitude}&z=15`;
-                    if (Platform.OS === 'web') {
-                      window.open(url, '_blank');
-                    } else {
-                      Linking.openURL(url);
-                    }
-                  }}
-                >
-                  <Map size={16} color={Colors.secondary} />
-                  <Text style={styles.previewButtonText}>Vista Previa</Text>
-                </TouchableOpacity>
-              </View>
+
+              <TouchableOpacity
+                style={styles.openMapsButton}
+                onPress={openInMaps}
+              >
+                <Navigation size={16} color={Colors.primary} />
+                <Text style={styles.openMapsButtonText}>Abrir en Mapas</Text>
+              </TouchableOpacity>
             </View>
           )}
-        </View>
 
-        <View style={styles.instructions}>
-          <Text style={styles.instructionsText}>
-            Introduce las coordenadas del campo de fútbol, busca por ciudad o usa el botón de navegación para obtener tu ubicación
-          </Text>
-          {selectedLocation && (
-            <TouchableOpacity
-              style={styles.openMapsButton}
-              onPress={() => {
-                const url = Platform.select({
-                  ios: `maps:0,0?q=${selectedLocation.latitude},${selectedLocation.longitude}`,
-                  android: `geo:0,0?q=${selectedLocation.latitude},${selectedLocation.longitude}`,
-                  web: `https://www.google.com/maps?q=${selectedLocation.latitude},${selectedLocation.longitude}`
-                });
-                if (url) {
-                  if (Platform.OS === 'web') {
-                    window.open(url, '_blank');
-                  } else {
-                    Linking.openURL(url).catch(err => {
-                      console.error('Error abriendo mapas:', err);
-                      // Fallback a Google Maps web
-                      const webUrl = `https://www.google.com/maps?q=${selectedLocation.latitude},${selectedLocation.longitude}`;
-                      Linking.openURL(webUrl).catch(() => {
-                        alert('No se pudo abrir Google Maps');
-                      });
-                    });
-                  }
-                }
-              }}
-            >
-              <MapPin size={16} color={Colors.primary} />
-              <Text style={styles.openMapsButtonText}>Ver en Google Maps</Text>
-            </TouchableOpacity>
-          )}
-
+          {/* Ubicación manual */}
           <TouchableOpacity
             style={styles.manualLocationButton}
             onPress={() => {
-              Alert.alert(
-                'Abrir Google Maps',
-                'Se abrirá Google Maps donde podrás buscar la ubicación exacta. Luego copia las coordenadas y pégalas aquí.',
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  {
-                    text: 'Abrir Maps',
-                    onPress: () => {
-                      const url = Platform.select({
-                        ios: 'maps:',
-                        android: 'geo:',
-                        web: 'https://www.google.com/maps'
-                      });
-                      if (url) {
-                        if (Platform.OS === 'web') {
-                          window.open(url, '_blank');
-                        } else {
-                          Linking.openURL(url).catch(() => {
-                            const webUrl = 'https://www.google.com/maps';
-                            Linking.openURL(webUrl).catch(() => {
-                              Alert.alert('Error', 'No se pudo abrir Google Maps');
-                            });
-                          });
-                        }
-                      }
-                    }
-                  }
-                ]
-              );
+              const address = searchText || 'Ubicación personalizada';
+              onLocationSelect({ address });
+              onClose();
             }}
           >
-            <Map size={16} color={Colors.secondary} />
-            <Text style={styles.manualLocationButtonText}>Abrir Google Maps para seleccionar</Text>
+            <MapPin size={20} color={Colors.secondary} />
+            <Text style={styles.manualLocationButtonText}>
+              Usar ubicación escrita manualmente
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -476,181 +254,139 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  closeButton: {
-    padding: 8,
-  },
   title: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  closeButton: {
+    padding: 8,
+    marginLeft: -8,
   },
   confirmButton: {
-    backgroundColor: Colors.primary,
     padding: 8,
-    borderRadius: 8,
+    marginRight: -8,
   },
   confirmButtonDisabled: {
-    backgroundColor: Colors.textLight,
+    opacity: 0.5,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
   },
   searchContainer: {
+    marginBottom: 20,
+  },
+  searchInputContainer: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  searchText: {
-    flex: 1,
     fontSize: 16,
     color: Colors.text,
+    padding: 0,
   },
-  locationButton: {
-    backgroundColor: Colors.surface,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addressContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  addressLabel: {
+  loadingText: {
     fontSize: 12,
-    color: Colors.textLight,
-    marginBottom: 4,
+    color: Colors.textSecondary,
   },
-  addressText: {
-    fontSize: 14,
-    color: Colors.text,
-    fontWeight: '500',
-  },
-  coordinatesContainer: {
-    flex: 1,
-    margin: 16,
-    padding: 20,
+  resultsContainer: {
+    marginTop: 8,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.border,
+    maxHeight: 200,
   },
-  coordinatesHeader: {
+  resultItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
+    alignItems: 'flex-start',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
     gap: 8,
   },
-  coordinatesTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  coordinatesInputs: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 20,
-  },
-  coordinateInput: {
+  resultText: {
     flex: 1,
-  },
-  coordinateLabel: {
     fontSize: 14,
-    fontWeight: '500',
     color: Colors.text,
-    marginBottom: 8,
+    lineHeight: 20,
   },
-  coordinateTextInput: {
-    backgroundColor: Colors.background,
+  webMapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    marginBottom: 20,
+    minHeight: 200,
+  },
+  nativeMapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: Colors.text,
-  },
-  useCoordinatesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 20,
-    gap: 8,
+    minHeight: 200,
   },
-  useCoordinatesButtonText: {
-    color: 'white',
+  webMapText: {
     fontSize: 16,
     fontWeight: '600',
+    color: Colors.textSecondary,
+    marginTop: 12,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  webMapSubtext: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   selectedLocationInfo: {
-    backgroundColor: Colors.background,
-    padding: 16,
+    backgroundColor: Colors.surface,
     borderRadius: 8,
-    borderWidth: 2,
-    borderColor: Colors.primary + '30',
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.success,
   },
-  markerIndicator: {
+  locationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
     gap: 8,
   },
-  selectedLocationTitle: {
-    fontSize: 16,
+  locationSelectedText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: Colors.success,
+  },
+  locationAddress: {
+    fontSize: 16,
     color: Colors.text,
+    marginBottom: 8,
+    lineHeight: 22,
   },
-  selectedLocationText: {
-    fontSize: 14,
-    color: Colors.textLight,
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  locationActions: {
-    marginTop: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  previewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.secondary + '20',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-    gap: 6,
-  },
-  previewButtonText: {
-    fontSize: 14,
-    color: Colors.secondary,
-    fontWeight: '500',
-  },
-  instructions: {
-    padding: 16,
-    backgroundColor: Colors.surface,
-  },
-  instructionsText: {
-    fontSize: 14,
-    color: Colors.textLight,
-    textAlign: 'center',
+  coordinatesText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
     marginBottom: 12,
   },
   openMapsButton: {

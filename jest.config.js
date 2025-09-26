@@ -1,6 +1,8 @@
 module.exports = {
-  preset: 'jest-expo',
-  setupFilesAfterEnv: ['<rootDir>/__tests__/setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/__tests__/setup-simple.js'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1'
+  },
   testMatch: [
     '**/__tests__/unit/**/*.(test|spec).(js|jsx|ts|tsx)',
     '**/__tests__/integration/**/*.(test|spec).(js|jsx|ts|tsx)',
@@ -8,7 +10,11 @@ module.exports = {
     '**/__tests__/components/**/*.(test|spec).(js|jsx|ts|tsx)',
     '**/__tests__/screens/**/*.(test|spec).(js|jsx|ts|tsx)',
     '**/__tests__/hooks/**/*.(test|spec).(js|jsx|ts|tsx)',
-    '**/__tests__/utils/**/*.(test|spec).(js|jsx|ts|tsx)'
+    '**/__tests__/utils/**/*.(test|spec).(js|jsx|ts|tsx)',
+    '**/tests/integration/**/*.(test|spec).(js|jsx|ts|tsx)',
+    '**/tests/unit/**/*.(test|spec).(js|jsx|ts|tsx)',
+    '**/tests/ui/**/*.(test|spec).(js|jsx|ts|tsx)',
+    '**/tests/scanner/**/*.(test|spec).(js|jsx|ts|tsx)'
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
@@ -32,9 +38,6 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(jest-)?@?react-native|@react-native-community|@react-navigation|expo|@expo|@unimodules|unimodules|sentry-expo|native-base|react-clone-referenced-element|lucide-react-native|@tanstack)'
   ],
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/$1'
-  },
   testTimeout: 30000
 };
 

@@ -1,3 +1,4 @@
+import DataFixerModal from '@/components/DataFixerModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-context';
@@ -5,7 +6,7 @@ import { useData } from '@/hooks/data-context';
 import { useTheme } from '@/hooks/theme-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, Bug, Database, Globe, Moon, Plus, RefreshCw, Shield, Trash2, User } from 'lucide-react-native';
+import { ArrowLeft, Bell, Bug, Database, Globe, Moon, Plus, RefreshCw, Shield, Trash2, User, Wrench } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,13 +23,16 @@ export default function ConfiguracionScreen() {
     crearEquipo,
     crearTorneo,
     crearPartidos,
-    crearAmistoso
+    crearAmistoso,
+    agregarEquipoAClub
   } = useData();
   const { colors } = useTheme();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [tipoDatos, setTipoDatos] = useState<'clubes' | 'equipos' | 'torneos' | 'amistosos'>('clubes');
+  const [showDataFixer, setShowDataFixer] = useState(false);
 
   const handleChangeRole = () => {
     const newRole = user?.rol === 'entrenador' ? 'espectador' : 'entrenador';
@@ -274,9 +278,16 @@ export default function ConfiguracionScreen() {
       return;
     }
 
+    let tipoLabel = '';
+    switch (tipoDatos) {
+      case 'clubes': tipoLabel = 'clubes deportivos'; break;
+      case 'equipos': tipoLabel = 'equipos'; break;
+      case 'torneos': tipoLabel = 'torneos'; break;
+      case 'amistosos': tipoLabel = 'amistosos'; break;
+    }
     Alert.alert(
       '🎲 Generar Datos de Prueba',
-      'Esto creará equipos, clubes, torneos y partidos aleatorios para probar la aplicación.\n\n¿Continuar?',
+      `Esto creará ${tipoLabel} aleatorios para probar la aplicación.\n\n¿Continuar?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -284,91 +295,113 @@ export default function ConfiguracionScreen() {
           onPress: async () => {
             setIsGenerating(true);
             try {
-              // Importar el generador de datos
               const { DataGenerator } = await import('../utils/data-generator');
-              const generator = new DataGenerator();
-
-              console.log('🎲 Generando datos de prueba...');
-
-              // Generar datos temporales
-              const data = generator.generateCompleteDataset();
-              console.log('📦 Datos generados, integrando en la aplicación...');
-
+              const entrenadorId = user?.id || 'generated-user';
+              const generator = new DataGenerator(entrenadorId);
+              const generated = generator.generarDatos(tipoDatos, 8);
               let clubesCreados = 0;
               let equiposCreados = 0;
               let torneosCreados = 0;
-              let partidosCreados = 0;
               let amistososCreados = 0;
-
-              // Crear clubes
-              for (const clubData of data.clubes) {
-                try {
-                  const { id, fechaCreacion, ...clubSinId } = clubData;
-                  await crearClub({
-                    ...clubSinId,
-                    entrenadorId: user?.id || 'generated-user'
-                  });
-                  clubesCreados++;
-                } catch (error) {
-                  console.warn('⚠️ Error creando club:', error);
+              let errores: string[] = [];
+              if (tipoDatos === 'clubes') {
+                for (const clubData of generated as any[]) {
+                  // Type guard: Club
+                  if (clubData && typeof clubData === 'object' && 'ubicacion' in clubData && 'categorias' in clubData) {
+                    try {
+                      const { id, fechaCreacion, ...clubSinId } = clubData;
+                      const clubCompleto = {
+                        ...clubSinId,
+                        entrenadorId: user?.id || 'generated-user',
+                        categorias: clubSinId.categorias || {},
+                        estadisticas: clubSinId.estadisticas || { totalEquipos: 0, torneosParticipados: 0, amistososJugados: 0 }
+                      };
+                      await crearClub(clubCompleto);
+                      clubesCreados++;
+                    } catch (error: any) {
+                      errores.push(`Error creando club: ${error?.message || error}`);
+                    }
+                  }
+                }
+              } else if (tipoDatos === 'equipos') {
+                for (const equipoData of generated as any[]) {
+                  // Type guard: Equipo
+                  if (equipoData && typeof equipoData === 'object' && 'jugadores' in equipoData && 'colores' in equipoData) {
+                    try {
+                      const { id, fechaCreacion, jugadores, clubId, ...equipoSinId } = equipoData;
+                      const equipoCompleto = {
+                        ...equipoSinId,
+                        entrenadorId: user?.id || 'generated-user',
+                        clubId,
+                        jugadores: Array.isArray(jugadores) ? jugadores.map(j => ({ ...j, equipoId: '' })) : [],
+                        colores: equipoData.colores || { principal: '#000', secundario: '#fff' },
+                        ciudad: equipoData.ciudad || 'Ciudad',
+                        estadisticas: equipoData.estadisticas || {
+                          partidosJugados: 0,
+                          partidosGanados: 0,
+                          partidosEmpatados: 0,
+                          partidosPerdidos: 0,
+                          golesFavor: 0,
+                          golesContra: 0,
+                          torneosParticipados: 0,
+                          torneosGanados: 0,
+                          amistososJugados: 0,
+                          amistososGanados: 0
+                        }
+                      };
+                      await crearEquipo(equipoCompleto);
+                      equiposCreados++;
+                    } catch (error: any) {
+                      errores.push(`Error creando equipo: ${error?.message || error}`);
+                    }
+                  }
+                }
+              } else if (tipoDatos === 'torneos') {
+                for (const torneoData of generated as any[]) {
+                  // Type guard: Torneo
+                  if (torneoData && typeof torneoData === 'object' && 'equiposIds' in torneoData && 'configuracion' in torneoData) {
+                    try {
+                      const { id, fechaCreacion, equiposIds, ...torneoSinId } = torneoData;
+                      await crearTorneo({
+                        ...torneoSinId,
+                        equiposIds,
+                        creadorId: user?.id || 'generated-user'
+                      });
+                      torneosCreados++;
+                    } catch (error: any) {
+                      errores.push(`Error creando torneo: ${error?.message || error}`);
+                    }
+                  }
+                }
+              } else if (tipoDatos === 'amistosos') {
+                for (const amistosoData of generated as any[]) {
+                  // Type guard: PartidoAmistoso
+                  if (amistosoData && typeof amistosoData === 'object' && 'equipoLocalId' in amistosoData && 'estado' in amistosoData) {
+                    try {
+                      await crearAmistoso(amistosoData);
+                      amistososCreados++;
+                    } catch (error: any) {
+                      errores.push(`Error creando amistoso: ${error?.message || error}`);
+                    }
+                  }
                 }
               }
-
-              // Crear equipos
-              for (const equipoData of data.equipos) {
-                try {
-                  const { id, fechaCreacion, jugadores, ...equipoSinId } = equipoData;
-                  await crearEquipo({
-                    ...equipoSinId,
-                    entrenadorId: user?.id || 'generated-user',
-                    jugadores: jugadores.map(j => ({ ...j, equipoId: '' })) // Se asignará automáticamente
-                  });
-                  equiposCreados++;
-                } catch (error) {
-                  console.warn('⚠️ Error creando equipo:', error);
-                }
-              }
-
-              // Crear torneos
-              for (const torneoData of data.torneos) {
-                try {
-                  const { id, fechaCreacion, ...torneoSinId } = torneoData;
-                  await crearTorneo({
-                    ...torneoSinId,
-                    creadorId: user?.id || 'generated-user'
-                  });
-                  torneosCreados++;
-                } catch (error) {
-                  console.warn('⚠️ Error creando torneo:', error);
-                }
-              }
-
-              // Crear amistosos
-              for (const amistososData of data.amistosos) {
-                try {
-                  const { id, fechaCreacion, ...amistosoSinId } = amistososData;
-                  await crearAmistoso(amistosoSinId);
-                  amistososCreados++;
-                } catch (error) {
-                  console.warn('⚠️ Error creando amistoso:', error);
-                }
-              }
-
-              console.log(`✅ Integración completada: ${clubesCreados} clubes, ${equiposCreados} equipos, ${torneosCreados} torneos, ${amistososCreados} amistosos`);
-
-              // Recargar datos para mostrar los nuevos
               await recargarDatos();
-
+              let mensaje = `Se han creado exitosamente:\n`;
+              if (clubesCreados) mensaje += `• ${clubesCreados} clubes deportivos\n`;
+              if (equiposCreados) mensaje += `• ${equiposCreados} equipos\n`;
+              if (torneosCreados) mensaje += `• ${torneosCreados} torneos\n`;
+              if (amistososCreados) mensaje += `• ${amistososCreados} amistosos`;
+              if (errores.length > 0) {
+                mensaje += `\n\n⚠️ Errores:\n${errores.join('\n')}`;
+              }
               Alert.alert(
                 '🎉 Datos Generados e Integrados',
-                `Se han creado exitosamente:\n• ${clubesCreados} clubes deportivos\n• ${equiposCreados} equipos\n• ${torneosCreados} torneos\n• ${amistososCreados} amistosos\n\n¡Ya puedes explorar todas las funcionalidades con datos reales!`,
+                mensaje,
                 [
-                  { text: 'Explorar Torneos', onPress: () => router.push('/(tabs)/(torneos)/') },
-                  { text: 'Ver Equipos', onPress: () => router.push('/(tabs)/(equipos)/') },
                   { text: 'OK' }
                 ]
               );
-
             } catch (error) {
               console.error('❌ Error generating data:', error);
               Alert.alert(
@@ -579,12 +612,39 @@ export default function ConfiguracionScreen() {
                   <View style={styles.settingText}>
                     <Text style={styles.settingLabel}>Generar Datos de Prueba</Text>
                     <Text style={styles.settingDescription}>
-                      Crear equipos, torneos y partidos aleatorios para probar la app
+                      Selecciona el tipo de datos a generar para pruebas
                     </Text>
                   </View>
                 </View>
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <View style={styles.pickerContainer}>
+                  {[
+                    { label: "🏛️ Clubes", value: "clubes" },
+                    { label: "👥 Equipos", value: "equipos" },
+                    { label: "🏆 Torneos", value: "torneos" },
+                    { label: "🤝 Amistosos", value: "amistosos" }
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.pickerOption,
+                        tipoDatos === option.value && styles.pickerOptionSelected
+                      ]}
+                      onPress={() => setTipoDatos(option.value as 'clubes' | 'equipos' | 'torneos' | 'amistosos')}
+                      disabled={isGenerating}
+                    >
+                      <Text style={[
+                        styles.pickerOptionText,
+                        tipoDatos === option.value && styles.pickerOptionTextSelected
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
                 <TouchableOpacity
-                  style={[styles.successButton, isGenerating && styles.changeButtonDisabled]}
+                  style={[styles.successButton, isGenerating && styles.changeButtonDisabled, { marginTop: 10 }]}
                   onPress={handleGenerateData}
                   disabled={isGenerating}
                 >
@@ -592,6 +652,27 @@ export default function ConfiguracionScreen() {
                   <Text style={styles.successButtonText}>
                     {isGenerating ? 'Generando...' : 'Generar'}
                   </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.settingCard}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Wrench size={20} color={Colors.primary} />
+                  <View style={styles.settingText}>
+                    <Text style={styles.settingLabel}>🔧 Reparar Datos</Text>
+                    <Text style={styles.settingDescription}>
+                      Corregir problemas de vinculación entre clubes y equipos
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.successButton}
+                  onPress={() => setShowDataFixer(true)}
+                >
+                  <Wrench size={16} color={Colors.background} />
+                  <Text style={styles.successButtonText}>Reparar</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -631,6 +712,11 @@ export default function ConfiguracionScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      <DataFixerModal
+        visible={showDataFixer}
+        onClose={() => setShowDataFixer(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -757,5 +843,43 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
     marginTop: 20,
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  pickerOption: {
+    flex: 1,
+    minWidth: 80,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+  },
+  pickerOptionSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  pickerOptionTextSelected: {
+    color: Colors.background,
+    fontWeight: '600',
   },
 });

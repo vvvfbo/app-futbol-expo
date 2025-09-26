@@ -1,8 +1,8 @@
 import { TIPOS_FUTBOL } from '@/constants/categories';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/hooks/theme-context';
 import { CampoFutbol, TipoFutbol } from '@/types';
 import { MapPin, Save, Users, X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { memo, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -31,6 +31,7 @@ export default function CampoFormModal({
   campo,
   ciudad
 }: CampoFormModalProps) {
+  const { colors } = useTheme();
   const [formData, setFormData] = useState({
     nombre: campo?.nombre || '',
     direccion: campo?.direccion || '',
@@ -113,12 +114,15 @@ export default function CampoFormModal({
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <X size={24} color={Colors.text} />
+              <X size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.title}>
               {campo ? 'Editar Campo' : 'Nuevo Campo'}
             </Text>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <TouchableOpacity 
+              style={[styles.saveButton, { backgroundColor: colors.primary }]} 
+              onPress={handleSave}
+            >
               <Save size={20} color="white" />
             </TouchableOpacity>
           </View>
@@ -134,7 +138,7 @@ export default function CampoFormModal({
                   value={formData.nombre}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, nombre: text }))}
                   placeholder="Ej: Campo Municipal Norte"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={colors.textSecondary}
                 />
               </View>
 
@@ -146,14 +150,14 @@ export default function CampoFormModal({
                     value={formData.direccion}
                     onChangeText={(text) => setFormData(prev => ({ ...prev, direccion: text }))}
                     placeholder="Dirección del campo"
-                    placeholderTextColor={Colors.textLight}
+                    placeholderTextColor={colors.textSecondary}
                     multiline
                   />
                   <TouchableOpacity
                     style={styles.mapButton}
                     onPress={() => setShowLocationPicker(true)}
                   >
-                    <MapPin size={20} color={Colors.primary} />
+                    <MapPin size={20} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
                 {formData.coordenadas && (
@@ -175,7 +179,7 @@ export default function CampoFormModal({
                       ]}
                       onPress={() => setFormData(prev => ({ ...prev, tipo: tipo.value }))}
                     >
-                      <Users size={14} color={formData.tipo === tipo.value ? 'white' : Colors.textLight} />
+                      <Users size={14} color={formData.tipo === tipo.value ? 'white' : colors.textSecondary} />
                       <Text style={[
                         styles.chipText,
                         formData.tipo === tipo.value && styles.chipTextActive
@@ -244,7 +248,7 @@ export default function CampoFormModal({
                 <Switch
                   value={formData.iluminacion}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, iluminacion: value }))}
-                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor="white"
                 />
               </View>
@@ -254,7 +258,7 @@ export default function CampoFormModal({
                 <Switch
                   value={formData.vestuarios}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, vestuarios: value }))}
-                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor="white"
                 />
               </View>
@@ -270,7 +274,7 @@ export default function CampoFormModal({
                   value={formData.telefono}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, telefono: text }))}
                   placeholder="Ej: +34 123 456 789"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={colors.textSecondary}
                   keyboardType="phone-pad"
                 />
               </View>
@@ -282,7 +286,7 @@ export default function CampoFormModal({
                   value={formData.email}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
                   placeholder="Ej: campo@ejemplo.com"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={colors.textSecondary}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -298,12 +302,25 @@ export default function CampoFormModal({
                     setFormData(prev => ({ ...prev, precio }));
                   }}
                   placeholder="0"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
                 />
               </View>
             </View>
           </ScrollView>
+          
+          {/* Footer con botón de guardar */}
+          <View style={styles.footer}>
+            <TouchableOpacity 
+              style={[styles.saveButtonLarge, { backgroundColor: colors.primary }]}
+              onPress={handleSave}
+            >
+              <Save size={20} color="white" />
+              <Text style={styles.saveButtonText}>
+                {campo ? 'Actualizar Campo' : 'Crear Campo'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
@@ -311,7 +328,7 @@ export default function CampoFormModal({
         <LocationPicker
           onClose={() => setShowLocationPicker(false)}
           onLocationSelect={handleLocationSelect}
-          initialAddress={formData.direccion}
+          initialLocation={formData.direccion}
         />
       )}
     </>
@@ -321,16 +338,16 @@ export default function CampoFormModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    // backgroundColor will be set inline using theme
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: Colors.surface,
+    // backgroundColor will be set inline using theme
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    // borderBottomColor will be set inline using theme
   },
   closeButton: {
     padding: 8,
@@ -338,10 +355,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text,
+    // color will be set inline using theme
   },
   saveButton: {
-    backgroundColor: Colors.primary,
+    // backgroundColor will be set inline using theme
     padding: 8,
     borderRadius: 8,
   },
@@ -354,7 +371,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    // color will be set inline using theme
     marginBottom: 16,
   },
   inputGroup: {
@@ -363,17 +380,15 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text,
+    // color will be set inline using theme
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.surface,
+    // backgroundColor, color, borderColor will be set inline using theme
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   locationInputContainer: {
     flexDirection: 'row',
@@ -386,17 +401,16 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   mapButton: {
-    backgroundColor: Colors.surface,
+    // backgroundColor, borderColor will be set inline using theme
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   coordinatesText: {
     fontSize: 12,
-    color: Colors.textLight,
+    // color will be set inline using theme
     marginTop: 4,
   },
   chipContainer: {
@@ -405,22 +419,20 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    // backgroundColor, borderColor will be set inline using theme
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
     gap: 6,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   chipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    // backgroundColor, borderColor will be set inline using theme
   },
   chipText: {
     fontSize: 14,
-    color: Colors.textLight,
+    // color will be set inline using theme
   },
   chipTextActive: {
     color: 'white',
@@ -428,16 +440,15 @@ const styles = StyleSheet.create({
   numberInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    // backgroundColor, borderColor will be set inline using theme
     borderRadius: 12,
     padding: 4,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   numberButton: {
     width: 40,
     height: 40,
-    backgroundColor: Colors.primary,
+    // backgroundColor will be set inline using theme
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -452,7 +463,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    // color will be set inline using theme
   },
   switchRow: {
     flexDirection: 'row',
@@ -462,6 +473,27 @@ const styles = StyleSheet.create({
   },
   switchLabel: {
     fontSize: 16,
-    color: Colors.text,
+    // color will be set inline using theme
+  },
+  footer: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  saveButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    minHeight: 50,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

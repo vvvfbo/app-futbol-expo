@@ -2,7 +2,8 @@ import createContextHook from '@nkzw/create-context-hook';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OptimizedStorage } from '../utils/supercomputer-optimization';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './auth-context';
 import { useData } from './data-context';
 
@@ -140,7 +141,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
     if (!user?.id) return;
     
     try {
-      const stored = await AsyncStorage.getItem(`notification_preferences_${user.id}`);
+      const stored = await OptimizedStorage.getItem(`notification_preferences_${user.id}`);
       if (stored) {
         setPreferences(JSON.parse(stored));
       }
@@ -153,7 +154,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
     if (!user?.id) return;
     
     try {
-      const stored = await AsyncStorage.getItem(`scheduled_notifications_${user.id}`);
+      const stored = await OptimizedStorage.getItem(`scheduled_notifications_${user.id}`);
       if (stored) {
         setScheduledNotifications(JSON.parse(stored));
       }
@@ -166,7 +167,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
     if (!user?.id) return;
     
     try {
-      await AsyncStorage.setItem(
+      await OptimizedStorage.setItem(
         `notification_preferences_${user.id}`,
         JSON.stringify(newPreferences)
       );
@@ -183,7 +184,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
     }
     
     try {
-      await AsyncStorage.setItem(
+      await OptimizedStorage.setItem(
         `scheduled_notifications_${user.id}`,
         JSON.stringify(notifications)
       );
@@ -473,7 +474,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
     
     if (user?.id) {
       try {
-        await AsyncStorage.setItem(
+        await OptimizedStorage.setItem(
           `notifications_sent_${user.id}`,
           JSON.stringify(updated)
         );
@@ -489,7 +490,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
       if (!user?.id) return;
       
       try {
-        const stored = await AsyncStorage.getItem(`notifications_sent_${user.id}`);
+        const stored = await OptimizedStorage.getItem(`notifications_sent_${user.id}`);
         if (stored) {
           setNotificationsSent(JSON.parse(stored));
         }

@@ -2,7 +2,7 @@ import Colors from '@/constants/colors';
 import { useData } from '@/hooks/data-context';
 import { Equipo, Partido, Torneo } from '@/types';
 import { ArrowLeftRight, Calendar, Save, Shuffle, Users, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import {
   Alert,
   Modal,

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { memo, useEffect } from 'react';
 import { useNotifications } from '@/hooks/notifications-context';
 import { useNotificationIntegration } from '@/hooks/use-notification-integration';
 import { useData } from '@/hooks/data-context';

@@ -1,4 +1,5 @@
 import ContextualMatchTimer from '@/components/ContextualMatchTimer';
+import { OptimizedErrorBoundary } from '@/components/OptimizedComponents';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-context';
 import { useData } from '@/hooks/data-context';
@@ -9,9 +10,17 @@ import { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function PartidoDetailScreen() {
+  return (
+    <OptimizedErrorBoundary>
+      <PartidoDetailScreenContent />
+    </OptimizedErrorBoundary>
+  );
+}
+
+function PartidoDetailScreenContent() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
-  const { partidos, equipos, actualizarResultado, actualizarPartido, campos, torneos, agregarEvento } = useData();
+  const { partidos, equipos, actualizarResultado, actualizarPartido, campos, torneos, agregarEvento, obtenerJugadoresPorEquipo } = useData();
   const [golesLocal, setGolesLocal] = useState('');
   const [golesVisitante, setGolesVisitante] = useState('');
   const [goleadores, setGoleadores] = useState<{ equipoId: string; jugadorId: string; minuto: number }[]>([]);
@@ -58,6 +67,20 @@ export default function PartidoDetailScreen() {
     const golesVisitanteNum = parseInt(golesVisitante);
     const totalGoles = golesLocalNum + golesVisitanteNum;
 
+    console.log('🏆 Guardando resultado del partido:', {
+      partidoId: partido.id,
+      golesLocal: golesLocalNum,
+      golesVisitante: golesVisitanteNum,
+      totalGoles,
+      goleadoresCount: goleadores.length,
+      goleadores: goleadores.map(g => ({
+        jugadorId: g.jugadorId,
+        equipoId: g.equipoId,
+        minuto: g.minuto,
+        nombreJugador: getNombreJugador(g.equipoId, g.jugadorId)
+      }))
+    });
+
     if (goleadores.length !== totalGoles) {
       Alert.alert('Error', `El número de goleadores (${goleadores.length}) no coincide con el total de goles (${totalGoles})`);
       return;
@@ -90,16 +113,44 @@ export default function PartidoDetailScreen() {
   };
 
   const handleAgregarGoleador = () => {
+    console.log('⚽ Agregando goleador:', {
+      selectedEquipo,
+      selectedJugador,
+      minutoGol,
+      equipoLocal: equipoLocal?.id,
+      equipoVisitante: equipoVisitante?.id
+    });
+
     if (!selectedEquipo || !selectedJugador || !minutoGol) {
       Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    const minuto = parseInt(minutoGol);
+    if (isNaN(minuto) || minuto < 1 || minuto > 120) {
+      Alert.alert('Error', 'El minuto debe ser un número entre 1 y 120');
+      return;
+    }
+
+    // Verificar que el jugador existe
+    const jugadores = getJugadoresEquipo(selectedEquipo);
+    const jugadorExiste = jugadores.find(j => j.id === selectedJugador);
+    if (!jugadorExiste) {
+      Alert.alert('Error', 'Jugador no encontrado en el equipo seleccionado');
       return;
     }
 
     const nuevoGoleador = {
       equipoId: selectedEquipo,
       jugadorId: selectedJugador,
-      minuto: parseInt(minutoGol)
+      minuto: minuto
     };
+
+    console.log('✅ Goleador agregado:', {
+      jugador: jugadorExiste.nombre,
+      equipo: getNombreEquipo(selectedEquipo),
+      minuto: minuto
+    });
 
     setGoleadores([...goleadores, nuevoGoleador]);
     setSelectedEquipo('');
@@ -113,14 +164,20 @@ export default function PartidoDetailScreen() {
   };
 
   const getJugadoresEquipo = (equipoId: string) => {
-    const equipo = equipos.find(e => e.id === equipoId);
-    return equipo?.jugadores || [];
+    const jugadores = obtenerJugadoresPorEquipo(equipoId);
+    console.log(`🔍 Buscando jugadores para equipo ${equipoId}:`, {
+      cantidadJugadores: jugadores.length,
+      jugadores: jugadores.map(j => ({ id: j.id, nombre: j.nombre, numero: j.numero, posicion: j.posicion }))
+    });
+    return jugadores;
   };
 
   const getNombreJugador = (equipoId: string, jugadorId: string) => {
-    const equipo = equipos.find(e => e.id === equipoId);
-    const jugador = equipo?.jugadores.find(j => j.id === jugadorId);
-    return jugador?.nombre || 'Desconocido';
+    const jugadores = obtenerJugadoresPorEquipo(equipoId);
+    const jugador = jugadores.find(j => j.id === jugadorId);
+    const nombre = jugador?.nombre || 'Desconocido';
+    const numero = jugador?.numero ? `#${jugador.numero}` : '';
+    return `${nombre} ${numero}`.trim();
   };
 
   const getNombreEquipo = (equipoId: string) => {
@@ -130,8 +187,21 @@ export default function PartidoDetailScreen() {
 
   // Función para manejar eventos del cronómetro
   const handleEventoCreado = async (evento: EventoPartido) => {
+    console.log('⚡ Creando evento desde cronómetro:', {
+      partidoId: partido?.id,
+      evento: {
+        tipo: evento.tipo,
+        minuto: evento.minuto,
+        jugadorId: evento.jugadorId,
+        equipoId: evento.equipoId
+      }
+    });
+
     if (partido?.id) {
       await agregarEvento(partido.id, evento);
+      console.log('✅ Evento agregado correctamente');
+    } else {
+      console.error('❌ No se pudo agregar evento: partido ID no encontrado');
     }
   };
 
@@ -172,14 +242,16 @@ export default function PartidoDetailScreen() {
       <View style={styles.matchContent}>
         <View style={styles.team}>
           <View style={styles.teamColors}>
-            <View style={[styles.colorBar, { backgroundColor: equipoLocal.colores.principal }]} />
-            <View style={[styles.colorBar, { backgroundColor: equipoLocal.colores.secundario }]} />
+            <View style={[styles.colorBar, { backgroundColor: equipoLocal.colores?.principal || '#007AFF' }]} />
+            <View style={[styles.colorBar, { backgroundColor: equipoLocal.colores?.secundario || '#34C759' }]} />
           </View>
-          <Text style={styles.teamName}>{equipoLocal.nombre}</Text>
+          <Text style={styles.teamName} numberOfLines={2}>{equipoLocal.nombre}</Text>
           <Text style={styles.teamLabel}>Local</Text>
+          <Text style={styles.teamInfo}>{getJugadoresEquipo(equipoLocal.id).length} jugadores</Text>
         </View>
 
         <View style={styles.scoreSection}>
+          <Text style={styles.estadoPartido}>{partido.estado}</Text>
           {partido.estado === 'Jugado' ? (
             <View style={styles.finalScore}>
               <Text style={styles.scoreNumber}>{partido.golesLocal}</Text>
@@ -189,7 +261,7 @@ export default function PartidoDetailScreen() {
           ) : (
             <View>
               <Text style={styles.vsText}>VS</Text>
-              {isEntrenador && (
+              {isEntrenador && partido.estado === 'Pendiente' && (
                 <View style={styles.scoreInputs}>
                   <TextInput
                     style={styles.scoreInput}
@@ -218,13 +290,26 @@ export default function PartidoDetailScreen() {
 
         <View style={styles.team}>
           <View style={styles.teamColors}>
-            <View style={[styles.colorBar, { backgroundColor: equipoVisitante.colores.principal }]} />
-            <View style={[styles.colorBar, { backgroundColor: equipoVisitante.colores.secundario }]} />
+            <View style={[styles.colorBar, { backgroundColor: equipoVisitante.colores?.principal || '#FF3B30' }]} />
+            <View style={[styles.colorBar, { backgroundColor: equipoVisitante.colores?.secundario || '#FF9500' }]} />
           </View>
-          <Text style={styles.teamName}>{equipoVisitante.nombre}</Text>
+          <Text style={styles.teamName} numberOfLines={2}>{equipoVisitante.nombre}</Text>
           <Text style={styles.teamLabel}>Visitante</Text>
+          <Text style={styles.teamInfo}>{getJugadoresEquipo(equipoVisitante.id).length} jugadores</Text>
         </View>
       </View>
+
+      {/* Cronómetro del partido */}
+      {isEntrenador && torneo && partido.estado === 'Pendiente' && (
+        <View style={styles.timerSection}>
+          <ContextualMatchTimer
+            partido={partido}
+            torneo={torneo}
+            onEventoCreado={handleEventoCreado}
+            onPartidoFinalizado={handlePartidoFinalizado}
+          />
+        </View>
+      )}
 
       {isEntrenador && (
         <View style={styles.actions}>
@@ -279,6 +364,31 @@ export default function PartidoDetailScreen() {
                   <Text style={styles.goleadorMinuto}>{gol.minuto}'</Text>
                 </View>
               ))}
+            </View>
+          )}
+
+          {partido.eventos && partido.eventos.length > 0 && (
+            <View style={styles.eventosSection}>
+              <Text style={styles.eventosTitulo}>Eventos del Partido</Text>
+              {partido.eventos
+                .sort((a, b) => a.minuto - b.minuto)
+                .map((evento, index) => (
+                  <View key={index} style={styles.eventoItem}>
+                    <View style={styles.eventoIcon}>
+                      {evento.tipo === 'gol' && <Target size={16} color={Colors.primary} />}
+                      {evento.tipo === 'tarjeta_amarilla' && <View style={[styles.tarjetaIcon, { backgroundColor: '#FFD700' }]} />}
+                      {evento.tipo === 'tarjeta_roja' && <View style={[styles.tarjetaIcon, { backgroundColor: '#FF4444' }]} />}
+                    </View>
+                    <Text style={styles.eventoNombre}>
+                      {evento.jugadorId ? getNombreJugador(evento.equipoId, evento.jugadorId) : 'Sistema'}
+                    </Text>
+                    <Text style={styles.eventoEquipo}>
+                      ({getNombreEquipo(evento.equipoId)})
+                    </Text>
+                    <Text style={styles.eventoMinuto}>{evento.minuto}'</Text>
+                    <Text style={styles.eventoTipo}>{evento.tipo.replace('_', ' ')}</Text>
+                  </View>
+                ))}
             </View>
           )}
 
@@ -411,21 +521,40 @@ export default function PartidoDetailScreen() {
 
                 {selectedEquipo && (
                   <>
-                    <Text style={styles.modalLabel}>Jugador</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.jugadoresScroll}>
-                      {getJugadoresEquipo(selectedEquipo).map(jugador => (
-                        <TouchableOpacity
-                          key={jugador.id}
-                          style={[styles.jugadorButton, selectedJugador === jugador.id && styles.jugadorButtonActive]}
-                          onPress={() => setSelectedJugador(jugador.id)}
-                        >
-                          <User size={14} color={selectedJugador === jugador.id ? 'white' : Colors.textLight} />
-                          <Text style={[styles.jugadorButtonText, selectedJugador === jugador.id && styles.jugadorButtonTextActive]}>
-                            {jugador.nombre}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                    <Text style={styles.modalLabel}>
+                      Jugador ({getJugadoresEquipo(selectedEquipo).length} disponibles)
+                    </Text>
+                    {getJugadoresEquipo(selectedEquipo).length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.jugadoresScroll}>
+                        {getJugadoresEquipo(selectedEquipo).map(jugador => (
+                          <TouchableOpacity
+                            key={jugador.id}
+                            style={[styles.jugadorButton, selectedJugador === jugador.id && styles.jugadorButtonActive]}
+                            onPress={() => setSelectedJugador(jugador.id)}
+                          >
+                            <Text style={[styles.jugadorNumero, selectedJugador === jugador.id && styles.jugadorNumeroActive]}>
+                              #{jugador.numero}
+                            </Text>
+                            <Text style={[styles.jugadorButtonText, selectedJugador === jugador.id && styles.jugadorButtonTextActive]}>
+                              {jugador.nombre}
+                            </Text>
+                            <Text style={[styles.jugadorPosicion, selectedJugador === jugador.id && styles.jugadorPosicionActive]}>
+                              {jugador.posicion}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <View style={styles.noJugadoresContainer}>
+                        <User size={24} color={Colors.textLight} />
+                        <Text style={styles.noJugadoresText}>
+                          No hay jugadores registrados en este equipo
+                        </Text>
+                        <Text style={styles.noJugadoresSubtext}>
+                          Agrega jugadores al equipo desde la sección de Equipos
+                        </Text>
+                      </View>
+                    )}
                   </>
                 )}
 
@@ -565,6 +694,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: Colors.textLight,
     marginHorizontal: 12,
+  },
+  timerSection: {
+    marginVertical: 20,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
   },
   actions: {
     marginTop: 40,
@@ -836,16 +971,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   jugadorButton: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     backgroundColor: Colors.background,
-    marginRight: 8,
+    marginRight: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: 4,
+    minWidth: 80,
   },
   jugadorButtonActive: {
     backgroundColor: Colors.primary,
@@ -872,5 +1007,110 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  eventosSection: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+  },
+  eventosTitulo: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  eventoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    marginBottom: 6,
+    gap: 8,
+  },
+  eventoIcon: {
+    width: 24,
+    alignItems: 'center',
+  },
+  tarjetaIcon: {
+    width: 12,
+    height: 16,
+    borderRadius: 2,
+  },
+  eventoNombre: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  eventoEquipo: {
+    fontSize: 12,
+    color: Colors.textLight,
+  },
+  eventoMinuto: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  eventoTipo: {
+    fontSize: 11,
+    color: Colors.textLight,
+    textTransform: 'capitalize',
+    marginLeft: 8,
+  },
+  teamInfo: {
+    fontSize: 12,
+    color: Colors.textLight,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  estadoPartido: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  jugadorNumero: {
+    fontSize: 10,
+    color: Colors.textLight,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  jugadorNumeroActive: {
+    color: 'white',
+  },
+  jugadorPosicion: {
+    fontSize: 9,
+    color: Colors.textLight,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  jugadorPosicionActive: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  noJugadoresContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  noJugadoresText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  noJugadoresSubtext: {
+    fontSize: 12,
+    color: Colors.textLight,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

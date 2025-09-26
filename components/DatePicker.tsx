@@ -1,7 +1,7 @@
 import Colors from '@/constants/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Calendar, Clock } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { memo, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -440,6 +440,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     width: '100%',
     fontFamily: Platform.OS === 'web' ? 'system-ui' : undefined,
-    outline: 'none',
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' as any } : {}),
   },
 });

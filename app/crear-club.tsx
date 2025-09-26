@@ -277,7 +277,7 @@ export default function CrearClubScreen() {
         <LocationPicker
           onLocationSelect={handleLocationSelect}
           onClose={() => setShowLocationPicker(false)}
-          initialAddress={formData.direccion}
+          initialLocation={formData.direccion}
         />
       )}
     </View>

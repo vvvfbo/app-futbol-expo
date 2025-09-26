@@ -11,10 +11,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { Suspense, useEffect } from "react";
+import { OptimizedLoadingSpinner, OptimizedErrorBoundary } from '../components/OptimizedComponents';
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { BundleInspector } from '../.rorkai/inspector';
 import { RorkErrorBoundary } from '../.rorkai/rork-error-boundary';
+import { initializeOptimizations } from '../utils/supercomputer-optimization';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -116,7 +117,7 @@ function LoadingFallback() {
       style={styles.gestureHandler}
     >
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="white" />
+        <OptimizedLoadingSpinner />
       </View>
     </LinearGradient>
   );
@@ -124,6 +125,9 @@ function LoadingFallback() {
 
 export default function RootLayout() {
   useEffect(() => {
+    // Initialize supercomputer optimizations
+    initializeOptimizations();
+    
     // Delay splash screen hiding to prevent hydration timeout
     const timeoutId = setTimeout(() => {
       try {
@@ -137,26 +141,28 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<LoadingFallback />}>
-          <ThemeProvider>
-            <AuthProvider>
-              <DataProvider>
-                <NotificationsProvider>
-                  <ChatProvider>
-                    <NotificationManager />
-                    <GestureHandlerRootView style={styles.gestureHandler}>
-                      <BundleInspector><RorkErrorBoundary><RootLayoutNav /></RorkErrorBoundary></BundleInspector>
-                    </GestureHandlerRootView>
-                  </ChatProvider>
-                </NotificationsProvider>
-              </DataProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </Suspense>
-      </QueryClientProvider>
-    </AuthErrorBoundary>
+    <OptimizedErrorBoundary>
+      <AuthErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={<LoadingFallback />}>
+            <ThemeProvider>
+              <AuthProvider>
+                <DataProvider>
+                  <NotificationsProvider>
+                    <ChatProvider>
+                      <NotificationManager />
+                      <GestureHandlerRootView style={styles.gestureHandler}>
+                        <RorkErrorBoundary><RootLayoutNav /></RorkErrorBoundary>
+                      </GestureHandlerRootView>
+                    </ChatProvider>
+                  </NotificationsProvider>
+                </DataProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </Suspense>
+        </QueryClientProvider>
+      </AuthErrorBoundary>
+    </OptimizedErrorBoundary>
   );
 }
 

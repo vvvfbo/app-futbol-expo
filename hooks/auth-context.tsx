@@ -13,7 +13,8 @@ import {
 } from '@/config/firebase';
 import { LoginFormData, RegisterFormData, User } from '@/types';
 import createContextHook from '@nkzw/create-context-hook';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OptimizedStorage } from '../utils/supercomputer-optimization';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 
@@ -52,7 +53,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
 
       // Primero intentar cargar desde AsyncStorage (datos de prueba)
       try {
-        const currentUserData = await AsyncStorage.getItem('currentUser');
+        const currentUserData = await OptimizedStorage.getItem('currentUser');
         if (currentUserData) {
           const userData = JSON.parse(currentUserData);
           if (userData && userData.id === uid) {
@@ -105,7 +106,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     // Función para cargar usuario de prueba si existe
     const loadTestUser = async () => {
       try {
-        const currentUserData = await AsyncStorage.getItem('currentUser');
+        const currentUserData = await OptimizedStorage.getItem('currentUser');
         if (currentUserData && isMounted) {
           const userData = JSON.parse(currentUserData);
           console.log('🧪 Test user found in AsyncStorage:', userData.email);
@@ -196,7 +197,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         (data.email === 'admin@futbolapp.com' && data.password === 'admin123') ||
         (data.email === 'test@futbolapp.com' && data.password === 'test123')) {
         console.log('🧪 Using test user login');
-        const currentUserData = await AsyncStorage.getItem('currentUser');
+        const currentUserData = await OptimizedStorage.getItem('currentUser');
         if (currentUserData) {
           const userData = JSON.parse(currentUserData);
           setUser(userData as User);

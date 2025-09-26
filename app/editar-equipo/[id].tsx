@@ -44,8 +44,8 @@ export default function EditarEquipoScreen() {
     if (equipo) {
       setNombre(equipo.nombre);
       setCiudad(equipo.ciudad);
-      setCategoria(equipo.categoria);
-      setTipoFutbol(equipo.tipoFutbol);
+      setCategoria(equipo.categoria || 'Alevin');
+      setTipoFutbol(equipo.tipoFutbol || 'F11');
       setColorPrincipal(equipo.colores.principal);
       setColorSecundario(equipo.colores.secundario);
       setEscudoUrl(equipo.escudo || '');

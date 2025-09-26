@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/auth-context';
 import { useData } from '@/hooks/data-context';
 import { Club, Equipo, Jugador, Torneo } from '@/types';
+import { OptimizedStorage } from '../utils/supercomputer-optimization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const useTestDataGenerator = () => {
@@ -55,7 +56,7 @@ export const useTestDataGenerator = () => {
             let totalDatos = 0;
 
             for (const key of keys) {
-                const data = await AsyncStorage.getItem(key);
+                const data = await OptimizedStorage.getItem(key);
                 if (data) {
                     try {
                         const parsed = JSON.parse(data);
@@ -84,7 +85,7 @@ export const useTestDataGenerator = () => {
                 console.log(`📋 Total claves en AsyncStorage: ${allKeys.length}`);
 
                 for (const key of allKeys) {
-                    const value = await AsyncStorage.getItem(key);
+                    const value = await OptimizedStorage.getItem(key);
                     if (value) {
                         try {
                             JSON.parse(value);
@@ -407,7 +408,7 @@ export const useTestDataGenerator = () => {
 
             // Verificar inmediatamente en AsyncStorage
             await new Promise(resolve => setTimeout(resolve, 100));
-            const clubesEnStorage = await AsyncStorage.getItem('clubes');
+            const clubesEnStorage = await OptimizedStorage.getItem('clubes');
             const clubesParsed = clubesEnStorage ? JSON.parse(clubesEnStorage) : [];
             console.log('📦 Clubes en AsyncStorage después de crear:', clubesParsed.length);
 
@@ -428,7 +429,7 @@ export const useTestDataGenerator = () => {
 
             // Verificar inmediatamente en AsyncStorage
             await new Promise(resolve => setTimeout(resolve, 100));
-            const equiposEnStorage = await AsyncStorage.getItem('equipos');
+            const equiposEnStorage = await OptimizedStorage.getItem('equipos');
             const equiposParsed = equiposEnStorage ? JSON.parse(equiposEnStorage) : [];
             console.log('📦 Equipos en AsyncStorage después de crear:', equiposParsed.length);
 
@@ -446,7 +447,7 @@ export const useTestDataGenerator = () => {
 
             // Verificar final en AsyncStorage
             await new Promise(resolve => setTimeout(resolve, 200));
-            const equiposFinales = await AsyncStorage.getItem('equipos');
+            const equiposFinales = await OptimizedStorage.getItem('equipos');
             const equiposFinalesParsed = equiposFinales ? JSON.parse(equiposFinales) : [];
 
             console.log('📦 Verificación final:', {

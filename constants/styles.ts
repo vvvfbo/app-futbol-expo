@@ -229,16 +229,6 @@ export const GlobalStyles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   
-  // Espaciado consistente
-  spacing: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    xxl: 24,
-  },
-  
   // Contenedores flexibles
   flexRow: {
     flexDirection: 'row',
@@ -265,6 +255,16 @@ export const GlobalStyles = StyleSheet.create({
     flexWrap: 'wrap',
   },
 });
+
+// Espaciado consistente
+export const Spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+};
 
 // Utilidades para crear botones dinámicamente
 export const createButtonStyle = (size: 'compact' | 'medium' | 'large', variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger') => {
